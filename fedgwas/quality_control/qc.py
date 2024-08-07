@@ -14,6 +14,10 @@ class QualityControl:
 
     
     def calculate_maf(self, bed_file: pd.DataFrame):
+        '''
+        This functions aims to calculate maf taking a DataFrame of bed file as input and returns a dataFrame containing maf column 
+        minor allele and major allele and some other parameters
+        '''
         bim_df = pd.DataFrame(bed_file.get_bim()).reset_index()
         genotype_df =self.count_genotype(bed_file)
         snps, mafs,nchrobs =[], [], []
@@ -90,6 +94,17 @@ class QualityControl:
         raise NotImplementedError
 
     def generate_report(output_path:None, start_time: None, end_time: None, total_variants: None, total_individuals:None, filtered_snps:None, non_missing_genotypes: None ):
+        '''
+        Generate report based on the input parameters
+        Input parameters
+        output_path (string): report file name
+        start_time (string): Start time of the execution
+        end_time (string): Execution end time
+        total_variants (int): Total genetic variants
+        total_individuals (int): Total number of individuals
+        filtered_snps (int): Total filtered snps
+        non_missing_genotypes (int): Total genotypes which are not null
+        '''
         #Generate report
         with open(output_path, 'w') as report_file:
             report_file.write(f"Genetic Analysis Report - Generated on {end_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -104,6 +119,11 @@ class QualityControl:
         
     
     def count_genotype(self, bedfile):
+        '''
+        Generate count of genotype
+        Parameters: bedfile (object)
+        Return genotype_df (DataFrame) contains counts of genotype accros snp_ids
+        '''
         genotype_counts={}
         for snp_id, genotypes in bedfile.iter_geno():
             unique_value, counts=np.unique(genotypes, return_counts= True)
