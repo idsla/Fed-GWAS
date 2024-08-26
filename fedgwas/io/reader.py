@@ -2,6 +2,7 @@ from pyplink import PyPlink
 from pandas_plink import read_plink
 import numpy as np
 import pandas as pd
+from pysnptools.snpreader import Bed
 
 filename = 'data/begin.cc.bed'
 
@@ -39,3 +40,7 @@ def fam_to_fam_df(bedfile):
     '''
     fam_df = pd.DataFrame(bedfile.get_fam(), columns=['fid', 'iid', 'father', 'mother', 'gender', 'status'])
     return fam_df
+
+def snp_reader_Bed(filepath):
+    snp_reader= Bed(filepath)
+    return snp_reader 

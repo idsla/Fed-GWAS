@@ -7,6 +7,16 @@ from io import reader
 logging.basicConfig(filename='king_analysis.log', level=logging.INFO, format='%(message)s')
 
 def calculate_king_coeff(genotype_i, genotype_j):
+    """
+    Calculates the KING kinship coefficient between two individuals.
+
+    Parameters:
+    genotype_i (array): Genotype data of the first individual.
+    genotype_j (array): Genotype data of the second individual.
+
+    Returns:
+    float: The calculated KING kinship coefficient.
+    """
     n11= np.sum((genotype_i == 1) & (genotype_j ==1))
     n02 = np.sum((genotype_i == 2) & (genotype_j == 0))
     n20 = np.sum((genotype_i == 0) & (genotype_j == 2))
@@ -22,6 +32,20 @@ def calculate_king_coeff(genotype_i, genotype_j):
     return phi_ij
 
 def incremental_analysis(Da, Db, snps, iterations):
+    """
+    Performs incremental analysis to estimate kinship coefficients.
+
+    Parameters:
+    Da (array): Genotype data for the first group of individuals.
+    Db (array): Genotype data for the second group of individuals.
+    snps (array): Indices of SNPs to be used in the analysis.
+    iterations (int): Number of iterations for incremental analysis.
+
+    Returns:
+    tuple: (combined_kinship, kinship_history)
+        combined_kinship (dict): Combined kinship coefficients.
+        kinship_history (list): Kinship coefficients at each iteration.
+    """
     combined_kinship ={}
     weights=[]
     kinship_history=[]
