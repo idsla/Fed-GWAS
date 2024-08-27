@@ -9,11 +9,19 @@ import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 import warnings
 from pysnptools.snpreader import Bed
+import argparse
 
 # File paths
-bed_path = 'cc.qc6.bed'
-bim_path = 'cc.qc6.bim'
-fam_path = 'cc.qc6.fam'
+parser = argparse.ArgumentParser(description="Perform QC on GWAS data.")
+parser.add_argument('--fam', required=True, help="Path to the .fam file")
+parser.add_argument('--bim', required=True, help="Path to the .bim file")
+parser.add_argument('--bed', required=True, help="Path to the .bed file")
+parser.add_argument('--threshold', type=float, default=0.05)
+args = parser.parse_args()
+
+bed_path = args.bed
+bim_path = args.bim
+fam_path = args.fam
 
 # Read genotype data using pysnptools
 snp_reader = Bed(bed_path, count_A1=False)
@@ -140,15 +148,6 @@ def linear_regression_comparison(X, y):
 # Run linear regression comparison
 p_values_sklearn_lin, p_values_statsmodels_lin = linear_regression_comparison(X_normalized, y)
 
-""" # Remove SNPs with NaN p-values to ensure lengths match
-valid_indices_lin = ~np.isnan(p_values_sklearn_lin) & ~np.isnan(p_values_statsmodels_lin)
-snp_ids = snp_ids[valid_indices_lin]
-p_values_sklearn_lin = p_values_sklearn_lin[valid_indices_lin]
-p_values_statsmodels_lin = p_values_statsmodels_lin[valid_indices_lin]
-
-# Final check to ensure all arrays have the same length before creating the DataFrame
-assert len(snp_ids) == len(p_values_sklearn_log) == len(p_values_statsmodels_log) == len(p_values_sklearn_lin) == len(p_values_statsmodels_lin), "Array lengths do not match before creating DataFrame!" """
-
 # Compare p-values
 comparison_df = pd.DataFrame({
     'SNP ID': snp_ids,
@@ -160,7 +159,7 @@ comparison_df = pd.DataFrame({
 })
 
 # Set the significance level
-threshold = 0.05
+threshold = args.threshold
 num_tests = len(snp_ids)  # Total number of SNPs
 
 # Calculate Bonferroni-corrected significance threshold
