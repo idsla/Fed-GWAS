@@ -74,12 +74,12 @@ def monitor_kinship_history(kinship_history):
 def final_kinship_estimate(combined_kinship):
     final_estimates = {}
     for key, value in combined_kinship.items():
-        if value > 0.35:
+        if value > firstkin:
             final_estimates[key] = '1st degree'
             logging.info(f"1st degree Final Estimate {key} and {value}")
-        elif value > 0.18:
+        elif value > secondkin:
             final_estimates[key] = '2nd degree'
-        elif value > 0.09:
+        elif value > thirdkin:
             final_estimates[key] = '3rd degree'
         else:
             final_estimates[key] = 'unrelated'
@@ -88,10 +88,15 @@ def final_kinship_estimate(combined_kinship):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Perform QC on GWAS data.")
     parser.add_argument('--file', required=True, help="Path to the bed file")
-
+    parser.add_argument('--firstkin', type=float, default=0.35, help="First Degree Kin threshold value")
+    parser.add_argument('--secondkin', type=float, default=0.18, help="Second Degree Kin threshold value")
+    parser.add_argument('--thirdkin', type=float, default=0.09, help="Third Degree Kin threshold value")
     args = parser.parse_args()
-    plink_file_path = args.file
 
+    plink_file_path = args.file
+    firstkin =args.firstkin
+    secondkin =args.secondkin
+    thirdkin =args.thirdkin
     bed_file = PyPlink(plink_file_path)
 
     (bim, fam, G) = read_plink(plink_file_path)
