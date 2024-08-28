@@ -160,8 +160,8 @@ class QualityControl:
 
         return df
 
-    def filter_data():
-        raise NotImplementedError
+    # def filter_data():
+    #     raise NotImplementedError
 
     def generate_report(output_path):
         raise NotImplementedError

@@ -12,6 +12,16 @@ start_time = datetime.datetime.now()
 logging.info(f"Start time: {start_time.strftime('%a %b %d %H:%M:%S %Y')}")
 
 def calculate_king_coeff(genotype_i, genotype_j):
+    """
+    Calculates the KING kinship coefficient between two individuals.
+
+    Parameters:
+    genotype_i (array): Genotype data of the first individual.
+    genotype_j (array): Genotype data of the second individual.
+
+    Returns:
+    float: The calculated KING kinship coefficient.
+    """
     n11 = np.sum((genotype_i == 1) & (genotype_j == 1))
     n02 = np.sum((genotype_i == 2) & (genotype_j == 0))
     n20 = np.sum((genotype_i == 0) & (genotype_j == 2))
@@ -25,6 +35,20 @@ def calculate_king_coeff(genotype_i, genotype_j):
     return phi_ij
 
 def incremental_analysis(Da, Db, snps, iterations):
+    """
+    Performs incremental analysis to estimate kinship coefficients.
+
+    Parameters:
+    Da (array): Genotype data for the first group of individuals.
+    Db (array): Genotype data for the second group of individuals.
+    snps (array): Indices of SNPs to be used in the analysis.
+    iterations (int): Number of iterations for incremental analysis.
+
+    Returns:
+    tuple: (combined_kinship, kinship_history)
+        combined_kinship (dict): Combined kinship coefficients.
+        kinship_history (list): Kinship coefficients at each iteration.
+    """
     combined_kinship = {}
     weights = []
     kinship_history = []
@@ -72,6 +96,15 @@ def monitor_kinship_history(kinship_history):
         print()
 
 def final_kinship_estimate(combined_kinship):
+    """
+    Categorizes kinship coefficients into degrees of relatedness.
+
+    Parameters:
+    combined_kinship (dict): A dictionary with pairs of individuals as keys and their kinship coefficients as values.
+
+    Returns:
+    dict: A dictionary with pairs of individuals as keys and their categorized degrees of relatedness as values.
+    """
     final_estimates = {}
     for key, value in combined_kinship.items():
         if value > firstkin:
@@ -97,6 +130,11 @@ if __name__ == "__main__":
     firstkin =args.firstkin
     secondkin =args.secondkin
     thirdkin =args.thirdkin
+
+    if not (firstkin > secondkin) & (firstkin> thirdkin):
+        print("Wrong values enter for 1st degree Estimate. 1st degree Estimate cannot be smaller than Second degree and third degree")
+    elif not(secondkin> thirdkin):
+        print("Wrong values enter for 2nd degree Estimate. Second degree Estimate cannot be smaller than third degree")
     bed_file = PyPlink(plink_file_path)
 
     (bim, fam, G) = read_plink(plink_file_path)
