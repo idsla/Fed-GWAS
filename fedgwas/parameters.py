@@ -1,8 +1,8 @@
 
 QUALITY_CONTROL = {
-    "func_name": {
-        'param1': 0.1,     # description of parameters1
-        'param2': 0.2,     # description of parameters2
+    "qc_threshold": {
+        'missing_threshold': 0.05,     # threshold for filtering missingness
+        'hwe_threshold': 1e-6 ,     # threshold for HWE 
     }
 }
 
