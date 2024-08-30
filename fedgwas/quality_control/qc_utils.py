@@ -3,7 +3,7 @@ import numpy as np
 class QCUtils:
 
     @staticmethod
-    def snphwe(obs_hets, obs_hom1, obs_hom2):
+    def snphwe(obs_hets: int, obs_hom1: int, obs_hom2: int) -> float:
         """
         Perform Hardy-Weinberg Equilibrium (HWE) test using exact p-value calculation.
 

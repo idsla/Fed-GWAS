@@ -1,8 +1,10 @@
 
 QUALITY_CONTROL = {
-    "qc_threshold": {
-        'missing_threshold': 0.05,     # threshold for filtering missingness
-        'hwe_threshold': 1e-6 ,     # threshold for HWE 
+    'missingness':{
+        'threshold': 0.05,     # threshold for filtering missingness
+    },
+    'hwe':{
+        'threshold': 1e-6 ,     # threshold for HWE 
     }
 }
 
