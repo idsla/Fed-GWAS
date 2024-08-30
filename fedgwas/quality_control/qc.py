@@ -129,11 +129,39 @@ class QualityControl:
         bim.to_csv(f"{output_prefix}.bim", sep="\t", header=False, index=False)
         return filtered_bim
 
-    def filter_maf_variants(self, genotype_data: pd.DataFrame, threshold: float) -> pd.DataFrame:
-        raise NotImplementedError
+    def filter_maf_variants(self, genotype_data: pd.DataFrame, maf_min=None, maf_max=None, mac_min=None, mac_max=None) -> pd.DataFrame:
+        """
+        Filter SNPs based on minor allele frequency (MAF) and minor allele count (MAC) thresholds.
 
-    def filter_data():
-        raise NotImplementedError
+        Parameters:
+        - df (DataFrame): DataFrame containing SNPs, MAF, allele counts, and total chromosome counts.
+        - maf_min (float): Minimum MAF threshold.
+        - maf_max (float): Maximum MAF threshold.
+        - mac_min (int): Minimum MAC threshold.
+        - mac_max (int): Maximum MAC threshold.
+
+        Returns:
+        - DataFrame: Filtered DataFrame based on specified criteria.
+        """
+         
+        if maf_min is not None:
+            df = df[df['MAF'] >= maf_min]
+        if maf_max is not None:
+            df = df[df['MAF'] <= maf_max]
+        if mac_min is not None:
+            # Calculating minor allele counts
+            df['MAC'] = df.apply(lambda row: min(row['NCHROBS'] * row['MAF'], (1 - row['MAF']) * row['NCHROBS']), axis=1)
+            df = df[df['MAC'] >= mac_min]
+        if mac_max is not None:
+            # Ensure MAC is already calculated
+            if 'MAC' not in df.columns:
+                df['MAC'] = df.apply(lambda row: min(row['NCHROBS'] * row['MAF'], (1 - row['MAF']) * row['NCHROBS']), axis=1)
+            df = df[df['MAC'] <= mac_max]
+
+        return df
+
+    # def filter_data():
+    #     raise NotImplementedError
 
     def generate_report(output_path):
         raise NotImplementedError
