@@ -1,186 +1,284 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import warnings
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 from scipy import stats
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
-import warnings
 from pysnptools.snpreader import Bed
-import argparse
+from fedgwas.io.reader import IODataHandler
+class GWASAssociation:
+    """
+    A class to perform quality control and statistical analysis on GWAS data using both
+    logistic and linear regression models from sklearn and statsmodels.
 
-# File paths
-parser = argparse.ArgumentParser(description="Perform QC on GWAS data.")
-parser.add_argument('--fam', required=True, help="Path to the .fam file")
-parser.add_argument('--bim', required=True, help="Path to the .bim file")
-parser.add_argument('--bed', required=True, help="Path to the .bed file")
-parser.add_argument('--threshold', type=float, default=0.05)
-args = parser.parse_args()
+    Attributes:
+    -----------
+    threshold : float
+        Significance level threshold for statistical tests.
 
-bed_path = args.bed
-bim_path = args.bim
-fam_path = args.fam
+    Methods:
+    --------
+    logistic_regression_comparison() -> pd.DataFrame:
+        Performs logistic regression using sklearn and statsmodels and compares p-values.
 
-# Read genotype data using pysnptools
-snp_reader = Bed(bed_path, count_A1=False)
-geno = snp_reader.read()
+    linear_regression_comparison() -> pd.DataFrame:
+        Performs linear regression using sklearn and statsmodels and compares p-values.
 
-# Extract genotype data (X) and phenotype data (y)
-X = geno.val  # Genotype data
-y = np.loadtxt(fam_path, usecols=[5])  # Assuming phenotype is in the 6th column of .fam file
+    save_results(logistic_df: pd.DataFrame, linear_df: pd.DataFrame) -> None:
+        Saves the results of logistic and linear regression comparisons to a CSV file.
+    """
 
-# Convert PHENOTYPE values: 2 -> 1 (case), 1 -> 0 (control)
-y = np.where(y == 2, 1, 0)
+    def __init__(self, bed_path: str, bim_path: str, fam_path: str, threshold: float):
+        """
 
-# Check the distribution of the phenotype data
-unique_classes, counts = np.unique(y, return_counts=True)
-print("Class distribution in phenotype data:", dict(zip(unique_classes, counts)))
+        Initializes the GWASQC class with file paths for genotype and phenotype data,
+        and sets the significance level threshold.
 
-# If there is only one class, raise an exception
-if len(unique_classes) < 2:
-    raise ValueError("The phenotype data contains only one class. Logistic regression requires at least two classes.")
+        Parameters:
+        -----------
+        bed_path : str
+            File path to the .bed file.
+        bim_path : str
+            File path to the .bim file.
+        fam_path : str
+            File path to the .fam file.
+        threshold : float
+            Significance level threshold for statistical tests.
+        """
+        self.bed_path = bed_path
+        self.bim_path = bim_path
+        self.fam_path = fam_path
+        self.threshold = threshold
 
-# Read SNP IDs from the .bim file
-snp_ids = pd.read_csv(bim_path, sep='\s+', header=None)[1].values
+        self.geno = IODataHandler._load_genotype_data(self)
+        self.y = IODataHandler._load_phenotype_data(self)
+        self.snp_ids = self._load_snp_ids()
+        self.X_normalized = self._preprocess_genotype_data()
 
-# Handle missing values using mean imputation
-imputer = SimpleImputer(strategy='mean')
-X_imputed = imputer.fit_transform(X)
 
-# Normalize data
-scaler = StandardScaler()
-X_normalized = scaler.fit_transform(X_imputed)
+    def _load_snp_ids(self) -> np.ndarray:
+        """
+        Loads SNP IDs from the .bim file.
 
-# Function to perform logistic regression using sklearn and statsmodels
-def logistic_regression_comparison(X, y):
-    p_values_sklearn = []
-    p_values_statsmodels = []
-    num_snps = X.shape[1]
+        Returns:
+        --------
+        np.ndarray:
+            Array of SNP IDs.
+        """
+        return pd.read_csv(self.bim_path, sep='\s+', header=None)[1].values
 
-    for snp_idx in range(num_snps):
-        snp_data = X[:, snp_idx].reshape(-1, 1)
+    def _preprocess_genotype_data(self) -> np.ndarray:
+        """
+        Handles missing values and normalizes genotype data.
 
-        # Sklearn logistic regression
+        Returns:
+        --------
+        np.ndarray:
+            Normalized genotype data as a NumPy array.
+        """
+        imputer = SimpleImputer(strategy='mean')
+        X_imputed = imputer.fit_transform(self.geno)
+
+        scaler = StandardScaler()
+        return scaler.fit_transform(X_imputed)
+
+    def logistic_regression_comparison(self) -> pd.DataFrame:
+        """
+        Performs logistic regression on genotype data using both sklearn and statsmodels, 
+        and compares the p-values for each SNP.
+
+        Returns:
+        --------
+        pd.DataFrame:
+            DataFrame containing SNP IDs and p-values from both sklearn and statsmodels.
+        """
+        p_values_sklearn = []
+        p_values_statsmodels = []
+
+        for snp_idx in range(self.X_normalized.shape[1]):
+            snp_data = self.X_normalized[:, snp_idx].reshape(-1, 1)
+
+            # Sklearn logistic regression
+            p_value_sklearn = self._sklearn_logistic_regression(snp_data)
+            p_values_sklearn.append(p_value_sklearn)
+
+            # Statsmodels logistic regression
+            p_value_statsmodels = self._statsmodels_logistic_regression(snp_data)
+            p_values_statsmodels.append(p_value_statsmodels)
+
+        return pd.DataFrame({
+            'SNP ID': self.snp_ids,
+            'p-value Statsmodels Logistic': p_values_statsmodels,
+            'p-value Sklearn Logistic': p_values_sklearn
+        })
+
+    def linear_regression_comparison(self) -> pd.DataFrame:
+        """
+        Performs linear regression on genotype data using both sklearn and statsmodels,
+        and compares the p-values for each SNP.
+
+        Returns:
+        --------
+        pd.DataFrame:
+            DataFrame containing SNP IDs and p-values from both sklearn and statsmodels.
+        """
+        p_values_sklearn = []
+        p_values_statsmodels = []
+
+        for snp_idx in range(self.X_normalized.shape[1]):
+            snp_data = self.X_normalized[:, snp_idx].reshape(-1, 1)
+
+            # Sklearn linear regression
+            p_value_sklearn = self._sklearn_linear_regression(snp_data)
+            p_values_sklearn.append(p_value_sklearn)
+
+            # Statsmodels linear regression
+            p_value_statsmodels = self._statsmodels_linear_regression(snp_data)
+            p_values_statsmodels.append(p_value_statsmodels)
+
+        return pd.DataFrame({
+            'SNP ID': self.snp_ids,
+            'p-value Statsmodels Linear': p_values_statsmodels,
+            'p-value Sklearn Linear': p_values_sklearn
+        })
+
+    def _sklearn_logistic_regression(self, snp_data: np.ndarray) -> float:
+        """
+        Performs logistic regression using sklearn and returns the p-value for the SNP.
+
+        Parameters:
+        -----------
+        snp_data : np.ndarray
+            Genotype data for a single SNP.
+
+        Returns:
+        --------
+        float:
+            p-value for the SNP coefficient.
+        """
         try:
             model_sklearn = LogisticRegression(solver='liblinear')
-            model_sklearn.fit(snp_data, y)
-            
-            # Extract the model parameters
-            coef = model_sklearn.coef_[0][0]
-            intercept = model_sklearn.intercept_[0]
+            model_sklearn.fit(snp_data, self.y)
 
-            # Manually compute standard errors and p-values
+            coef = model_sklearn.coef_[0][0]
             pred_probs = model_sklearn.predict_proba(snp_data)[:, 1]
+
             X_design = np.hstack([np.ones((snp_data.shape[0], 1)), snp_data])
             V = np.diagflat(pred_probs * (1 - pred_probs))
             cov_matrix = np.linalg.inv(X_design.T @ V @ X_design)
             se = np.sqrt(np.diag(cov_matrix))
             z_scores = coef / se[1]
-            p_value_sklearn = 2 * (1 - stats.norm.cdf(np.abs(z_scores)))
-            p_values_sklearn.append(p_value_sklearn)
-        except Exception as e:
-            p_values_sklearn.append(np.nan)
+            return 2 * (1 - stats.norm.cdf(np.abs(z_scores)))
+        except Exception:
+            return np.nan
 
-        # Statsmodels logistic regression
+    def _statsmodels_logistic_regression(self, snp_data: np.ndarray) -> float:
+        """
+        Performs logistic regression using statsmodels and returns the p-value for the SNP.
+
+        Parameters:
+        -----------
+        snp_data : np.ndarray
+            Genotype data for a single SNP.
+
+        Returns:
+        --------
+        float:
+            p-value for the SNP coefficient.
+        """
         try:
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', category=ConvergenceWarning)
-                model_statsmodels = sm.Logit(y, sm.add_constant(snp_data)).fit(disp=False)
-            p_value_statsmodels = model_statsmodels.pvalues[1]  # Get p-value of the SNP coefficient
-            p_values_statsmodels.append(p_value_statsmodels)
-        except Exception as e:
-            p_values_statsmodels.append(np.nan)         
+                model_statsmodels = sm.Logit(self.y, sm.add_constant(snp_data)).fit(disp=False)
+            return model_statsmodels.pvalues[1]
+        except Exception:
+            return np.nan
 
-    return np.array(p_values_sklearn), np.array(p_values_statsmodels)
+    def _sklearn_linear_regression(self, snp_data: np.ndarray) -> float:
+        """
+        Performs linear regression using sklearn and returns the p-value for the SNP.
 
-# Run logistic regression comparison
-p_values_sklearn_log, p_values_statsmodels_log = logistic_regression_comparison(X_normalized, y)
+        Parameters:
+        -----------
+        snp_data : np.ndarray
+            Genotype data for a single SNP.
 
-# Remove SNPs with NaN p-values to ensure lengths match
-""" valid_indices = ~np.isnan(p_values_sklearn_log) & ~np.isnan(p_values_statsmodels_log)
-snp_ids = snp_ids[valid_indices]
-p_values_sklearn_log = p_values_sklearn_log[valid_indices]
-p_values_statsmodels_log = p_values_statsmodels_log[valid_indices] """
-
-# Function to perform linear regression using sklearn and statsmodels
-def linear_regression_comparison(X, y):
-    p_values_sklearn = []
-    p_values_statsmodels = []
-    num_snps = X.shape[1]
-
-    for snp_idx in range(num_snps):
-        snp_data = X[:, snp_idx].reshape(-1, 1)
-
-        # Sklearn linear regression
+        Returns:
+        --------
+        float:
+            p-value for the SNP coefficient.
+        """
         try:
             model_sklearn = LinearRegression()
-            model_sklearn.fit(snp_data, y)
+            model_sklearn.fit(snp_data, self.y)
             coef = model_sklearn.coef_[0]
-            intercept = model_sklearn.intercept_
+
             y_pred = model_sklearn.predict(snp_data)
-            residuals = y - y_pred
-            ss_res = np.sum(residuals**2)
-            ss_tot = np.sum((y - np.mean(y))**2)
+            residuals = self.y - y_pred
+            ss_res = np.sum(residuals ** 2)
+            ss_tot = np.sum((self.y - np.mean(self.y)) ** 2)
             r2 = 1 - (ss_res / ss_tot)
-            var_b = np.var(residuals) / (np.var(snp_data) * len(y))
+            if np.var(snp_data) == 0:
+                return np.nan
+            var_b = np.var(residuals) / (np.var(snp_data) * len(self.y))
             se_b = np.sqrt(var_b)
+
             if se_b == 0:
-                p_values_sklearn.append(np.nan)
+                return np.nan
             else:
                 t_stat = coef / se_b
-                p_value_sklearn = 2 * (1 - stats.t.cdf(np.abs(t_stat), df=len(y) - 2))
-                p_values_sklearn.append(p_value_sklearn)
-        except Exception as e:
-            p_values_sklearn.append(np.nan)
+                return 2 * (1 - stats.t.cdf(np.abs(t_stat), df=len(self.y) - 2))
+        except Exception:
+            return np.nan
 
-        # Statsmodels linear regression
+    def _statsmodels_linear_regression(self, snp_data: np.ndarray) -> float:
+        """
+        Performs linear regression using statsmodels and returns the p-value for the SNP.
+
+        Parameters:
+        -----------
+        snp_data : np.ndarray
+            Genotype data for a single SNP.
+
+        Returns:
+        --------
+        float:
+            p-value for the SNP coefficient.
+        """
         try:
-            model_statsmodels = sm.OLS(y, sm.add_constant(snp_data)).fit()
-            p_value_statsmodels = model_statsmodels.pvalues[1]  # Get p-value of the SNP coefficient
-            p_values_statsmodels.append(p_value_statsmodels)
-        except Exception as e:
-            p_values_statsmodels.append(np.nan)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=ConvergenceWarning)
+            model_statsmodels = sm.OLS(self.y, sm.add_constant(snp_data)).fit()
+            return model_statsmodels.pvalues[1]
+        except Exception:
+            return np.nan
 
-    return np.array(p_values_sklearn), np.array(p_values_statsmodels)
+    def save_results(self, logistic_df: pd.DataFrame, linear_df: pd.DataFrame) -> None:
+        """
+        Saves the results of logistic and linear regression comparisons to a CSV file,
+        including significance information based on Bonferroni correction.
 
-# Run linear regression comparison
-p_values_sklearn_lin, p_values_statsmodels_lin = linear_regression_comparison(X_normalized, y)
+        Parameters:
+        -----------
+        logistic_df : pd.DataFrame
+            DataFrame containing logistic regression comparison results.
+        linear_df : pd.DataFrame
+            DataFrame containing linear regression comparison results.
+        """
+        comparison_df = pd.merge(logistic_df, linear_df, on='SNP ID')
 
-# Compare p-values
-comparison_df = pd.DataFrame({
-    'SNP ID': snp_ids,
-    'p-value Statsmodels Logistic': p_values_statsmodels_log,
-    'p-value Sklearn Logistic': p_values_sklearn_log,
-    'p-value Statsmodels Linear': p_values_statsmodels_lin,
-    'p-value Sklearn Linear': p_values_sklearn_lin,
-    
-})
+        num_tests = len(self.snp_ids)
+        alpha_bonferroni = self.threshold / num_tests
 
-# Set the significance level
-threshold = args.threshold
-num_tests = len(snp_ids)  # Total number of SNPs
+        comparison_df['Significant Statsmodels Logistic'] = comparison_df['p-value Statsmodels Logistic'] < alpha_bonferroni
+        comparison_df['Significant Sklearn Logistic'] = comparison_df['p-value Sklearn Logistic'] < alpha_bonferroni
+        comparison_df['Significant Statsmodels Linear'] = comparison_df['p-value Statsmodels Linear'] < alpha_bonferroni
+        comparison_df['Significant Sklearn Linear'] = comparison_df['p-value Sklearn Linear'] < alpha_bonferroni
 
-# Calculate Bonferroni-corrected significance threshold
-alpha_bonferroni = threshold/num_tests
+        comparison_df.to_csv('comparison_regression_results_with_significance.csv', index=False)
 
-# Apply Bonferroni correction and determine significance
-comparison_df['Significant Statsmodels Logistic'] = comparison_df['p-value Statsmodels Logistic'] < alpha_bonferroni
-comparison_df['Significant Sklearn Logistic'] = comparison_df['p-value Sklearn Logistic'] < alpha_bonferroni
-comparison_df['Significant Statsmodels Linear'] = comparison_df['p-value Statsmodels Linear'] < alpha_bonferroni
-comparison_df['Significant Sklearn Linear'] = comparison_df['p-value Sklearn Linear'] < alpha_bonferroni
+        print(f"Comparison results with significance saved to 'comparison_regression_results_with_significance.csv'.")
 
-# Save comparison results to a CSV file with significance information
-comparison_df.to_csv('comparison_regression_results_with_significance.csv', index=False)
-# Print the number of significant SNPs for each method
-num_significant_statsmodels_log = comparison_df['Significant Statsmodels Logistic'].sum()
-num_significant_sklearn_log = comparison_df['Significant Sklearn Logistic'].sum()
-num_significant_statsmodels_lin = comparison_df['Significant Statsmodels Linear'].sum()
-num_significant_sklearn_lin = comparison_df['Significant Sklearn Linear'].sum()
-
-print(f"Number of significant SNPs (Statsmodels Logistic): {num_significant_statsmodels_log}")
-print(f"Number of significant SNPs (Sklearn Logistic): {num_significant_sklearn_log}")
-print(f"Number of significant SNPs (Statsmodels Linear): {num_significant_statsmodels_lin}")
-print(f"Number of significant SNPs (Sklearn Linear): {num_significant_sklearn_lin}")
-print(f"Comparison results with significance saved to 'comparison_regression_results_with_significance.csv'.")
