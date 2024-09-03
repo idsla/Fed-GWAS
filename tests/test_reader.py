@@ -4,7 +4,6 @@ import pandas as pd
 from  fedgwas.quality_control.qc import QualityControl 
 from fedgwas.io.reader import IODataHandler
 from fedgwas.quality_control.qc_utils import QCUtils
-from fedgwas.parameters import QUALITY_CONTROL
 
 #Setup logging
 logging.basicConfig(filename='reader_IO.log', level=logging.INFO, format='%(message)s')
@@ -30,10 +29,8 @@ if __name__ == "__main__":
         # Print the results
         logging.info(f"Genotype data:\n{genotype_data}")
         qcInstance = QualityControl()
-        missing_threshold = QUALITY_CONTROL['qc_threshold']['missing_threshold']
-        hwe_threshold = QUALITY_CONTROL['qc_threshold']['hwe_threshold']
         qcInstance.calculate_missing_rate(geno_df, bed, 'missing_rate')
-        qcInstance.filter_missingness_samples(geno_df, fam_df, missing_threshold, 'individual_missing')
-        qcInstance.geno(genotype_data, bim_df, missing_threshold, 'snp_missing')
-        filtered_geno, snp_indices_to_keep = qcInstance.hardy_weinberg_test(geno_df, hwe_threshold)
+        qcInstance.filter_missingness_samples(geno_df, fam_df, 'individual_missing')
+        qcInstance.geno(genotype_data, bim_df, 'snp_missing')
+        filtered_geno, snp_indices_to_keep = qcInstance.hardy_weinberg_test(geno_df)
         io.save_filtered_data(bim_df, filtered_geno, snp_indices_to_keep, 'hwe_test')

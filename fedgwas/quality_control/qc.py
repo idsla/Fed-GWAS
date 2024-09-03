@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from fedgwas.quality_control.qc_utils import QCUtils
 import logging
+from fedgwas.parameters import QUALITY_CONTROL
 
 # Configure logging
 logging.basicConfig(filename='report_QC.log', filemode='w', level=logging.DEBUG,
@@ -14,6 +15,17 @@ class QualityControl:
         raise NotImplementedError
 
     def calculate_missing_rate(self, genotype_data: pd.DataFrame, bed, output_prefix: str):
+        """
+        Calculate missing rates per SNP and per individual.
+
+        Parameters:
+        genotype_data (pd.DataFrame): DataFrame containing genotype data where rows represent individuals and columns represent SNPs.
+        bed: An object containing 'iid' (individual IDs) and 'sid' (SNP IDs).
+        output_prefix (str): Prefix for the output files.
+
+        Returns:
+        Two DataFrames, one for SNP missing rates and one for individual missing rates.
+        """
    
         try:
             n_individuals, n_snps = genotype_data.shape
@@ -49,13 +61,24 @@ class QualityControl:
     def calculate_maf(self, genotype_data: pd.DataFrame):
         raise NotImplementedError
 
-    def hardy_weinberg_test(self, genotype_data: pd.DataFrame, threshold: float):
-        """Perform Hardy-Weinberg Equilibrium test and filter SNPs based on the threshold."""
+    def hardy_weinberg_test(self, genotype_data: pd.DataFrame):
+        """
+        Perform Hardy-Weinberg Equilibrium (HWE) test for each SNP in the genotype data and filter SNPs based on the threshold.
+
+        Parameters:
+        genotype_data (pd.DataFrame): DataFrame where each column represents a SNP and each row represents an individual.
+                                    The values should be 0, 1, or 2 corresponding to homozygous for the first allele,
+                                    heterozygous, and homozygous for the second allele, respectively.
+        Returns:
+        tuple:
+            - pd.DataFrame: A DataFrame containing only the SNPs that pass the HWE test based on the threshold.
+            - list[int]: A list of column indices corresponding to the SNPs that were retained after the HWE filtering.
+        """
         try:
             # Initialize lists to store results
             hwe_results = []
             snp_indices_to_keep = []
-
+            threshold = QUALITY_CONTROL['hwe']['threshold']
             for snp_idx in range(genotype_data.shape[1]):
                 snp_geno = genotype_data.iloc[:, snp_idx].values  # Convert to NumPy array
                 obs_hom1 = np.sum(snp_geno == 0)
@@ -77,9 +100,21 @@ class QualityControl:
             print(f"An error occurred while performing Hardy-Weinberg test: {e}")
             return genotype_data, []    # Initialize lists to store results
         
-    def filter_missingness_samples(self, genotype_data: pd.DataFrame, fam, threshold: float, output_prefix) -> pd.DataFrame:
+    def filter_missingness_samples(self, genotype_data: pd.DataFrame, fam: pd.DataFrame, output_prefix) -> pd.DataFrame:
+        """
+        Filter individuals based on missing genotype data and save the filtered FAM file.
+
+        Parameters:
+        - genotype_data (pd.DataFrame): Genotype data matrix.
+        - fam (pd.DataFrame): FAM file data.
+        - output_prefix (str): Prefix for the output file name.
+
+        Returns:
+        - pd.DataFrame: Filtered FAM data.
+        """
         n_individuals, n_snps = genotype_data.shape
-    
+        threshold = QUALITY_CONTROL['missingness']['threshold']
+
         # Calculate the proportion of missing genotypes for each individual
         missing_per_ind = np.sum(np.isnan(genotype_data), axis=1) / n_snps
         # Identify individuals to keep
@@ -103,9 +138,21 @@ class QualityControl:
         fam.to_csv(f"{output_prefix}.fam", sep=" ", header=False, index=False)
         return filtered_fam
     
-    def geno(self, genotypes, bim, threshold, output_prefix):
-       
+    def geno(self, genotypes: pd.DataFrame, bim: pd.DataFrame, output_prefix: str) -> pd.DataFrame:
+        """
+        Filter SNPs based on missing genotype data and save the filtered BIM file.
+
+        Parameters:
+        - genotypes (pd.DataFrame): Genotype data matrix.
+        - bim (pd.DataFrame): BIM file data.
+        - output_prefix (str): Prefix for the output file name.
+
+        Returns:
+        - pd.DataFrame: Filtered BIM data.
+        """
         n_individuals, n_snps = genotypes.shape
+        threshold = QUALITY_CONTROL['missingness']['threshold']
+        
         # Calculate the proportion of missing genotypes for each SNP using the filtered genotype matrix
         snp_missing_proportions = np.sum(np.isnan(genotypes), axis=0) / n_individuals
         # Identify SNPs to keep

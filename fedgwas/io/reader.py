@@ -26,8 +26,6 @@ class IODataHandler:
             File path to the .bim file.
         fam_path : str
             File path to the .fam file.
-        threshold : float
-            Significance level threshold for statistical tests.
         """
         self.bed_path = bed_path
         self.bim_path = bim_path
@@ -124,12 +122,12 @@ class IODataHandler:
     def read_fam(self):
         """Read .fam file."""
         logger.info(f"Reading .fam file from {self.fam_path}")
-        return pd.read_csv(self.fam_path, delim_whitespace=True, header=None, 
+        return pd.read_csv(self.fam_path, sep='\s+', header=None, 
                         names=['FID', 'IID', 'PID', 'MID', 'Sex', 'Phenotype'])
 
     # Function to read .bim file
     def read_bim(self):
         """Read .bim file."""
         logger.info(f"Reading .bim file from {self.bim_path}")
-        return pd.read_csv(self.bim_path, delim_whitespace=True, header=None, 
+        return pd.read_csv(self.bim_path, sep='\s+', header=None, 
                         names=['Chromosome', 'SNP', 'Genetic_distance', 'BP', 'Allele1', 'Allele2'])                 
