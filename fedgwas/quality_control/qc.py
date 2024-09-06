@@ -7,8 +7,39 @@ from fedgwas.parameters import QUALITY_CONTROL
 logging.basicConfig(filename='report_QC.log', filemode='w', level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
+from typing import List, Tuple, Dict, Union
+
 class QualityControl:
-    def __init__(self):
+
+    '''
+    Examle Usage:
+
+    qc = QualityControl(
+        params = [
+            ('filter_missingness_samples', {'min_maf': 0.05}),
+        ]
+    )
+
+    output_data = qc.perform_quality_control(input_data = ...)
+
+    qc.generate_report(output_path = ...)
+
+    '''
+    
+    def __init__(
+            self, params: List[Tuple[str, Dict[str, Union[int, float]]]]
+        ):
+        
+        # example
+        params = [
+            ('check_sex', {}),
+            ('calculate_missing_rate', {}),
+            ('calculate_maf', {}),
+            ('hardy_weinberg_test', {'threshold': 1e-6}),
+            ('filter_missingness_samples', {'min_maf': 0.05}),
+        ]
+    
+    def perform_quality_control():
         pass
 
     def check_sex(self, genotype_data: pd.DataFrame, bed):
