@@ -35,6 +35,7 @@ class KinshipAnalyzer:
         phi_ij = (2 * n11 - 4 * (n02 + n20) - n1_s + s_1) / (4 * n1_s)
         return phi_ij
 
+    
     def incremental_analysis(self, Da: np.ndarray, Db: np.ndarray, snps: np.ndarray, iterations: int):
         """
         Performs incremental analysis to estimate kinship coefficients.
