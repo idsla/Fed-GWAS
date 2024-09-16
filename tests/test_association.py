@@ -2,9 +2,7 @@ from fedgwas.association.association import GWASAssociation
 
 if __name__ == "__main__":
     assoc = GWASAssociation(
-        bed_path='/Users/sonamrathod/Documents/Rutgers/Project/Git_Repo/cc.qc6.bed',
-        bim_path='/Users/sonamrathod/Documents/Rutgers/Project/Git_Repo/cc.qc6.bim',
-        fam_path='/Users/sonamrathod/Documents/Rutgers/Project/Git_Repo/cc.qc6.fam',
+        bed_path='/data/begin.cc',
         threshold=0.05
 
     )
