@@ -429,7 +429,7 @@ class QualityControl:
                     mac_max=None   # Optional: You can omit the mac_max if not needed
                     )
                     print(f"Runing { func_name}....")
-                elif func_name =="Calculate Missing Rate":
+                elif func_name =="calculate_missing_rate":
                     print("Calculate Missing rate")
                     func(genotype_data=self.geno, output_prefix="output")
                 elif func_name =='hardy_weinberg_test':
