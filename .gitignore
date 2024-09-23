@@ -1,2 +1,8 @@
 .venv
 data
+site
+*.pyc
+*.DS_Store
+__init__.py
+*.csv
+*.log

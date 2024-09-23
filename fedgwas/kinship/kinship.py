@@ -34,33 +34,8 @@ class KinshipAnalyzer:
 
         phi_ij = (2 * n11 - 4 * (n02 + n20) - n1_s + s_1) / (4 * n1_s)
         return phi_ij
-    def incremental_analysis(self, D: np.ndarray, snps: np.ndarray):
-        """
-        Performs Centralized analysis to estimate kinship coefficients.
 
-        Parameters:
-        Da (np.ndarray): Genotype data for the first group of individuals.
-        Db (np.ndarray): Genotype data for the second group of individuals.
-        snps (np.ndarray): Indices of SNPs to be used in the analysis.
-        iterations (int): Number of iterations for incremental analysis.
-
-        Returns:
-        tuple: (combined_kinship, kinship_history)
-            combined_kinship (dict): Combined kinship coefficients.
-            kinship_history (list): Kinship coefficients at each iteration.
-        """
-        combined_kinship = {}
-
-        selected_snps = snps  # Use all SNPs provided
-
-        for i in range(D.shape[0]):
-            for j in range(i + 1, D.shape[0]):
-                genotype_i = D[i, selected_snps]
-                genotype_j = D[j, selected_snps]
-                phi_ij = self.calculate_king_coeff(genotype_i, genotype_j)
-                combined_kinship[(i, j)] = phi_ij
-
-        return combined_kinship
+    
     def incremental_analysis(self, Da: np.ndarray, Db: np.ndarray, snps: np.ndarray, iterations: int):
         """
         Performs incremental analysis to estimate kinship coefficients.

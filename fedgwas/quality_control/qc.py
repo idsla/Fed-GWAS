@@ -10,6 +10,9 @@ import argparse
 # Configure logging
 logging.basicConfig(filename='report_QC.log', filemode='w', level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+from typing import List, Tuple, Dict, Union
+
 class QualityControl:
     def __init__(self, bed_path: str, bim_path: str, fam_path:str, threshold: float):
         self.bed_path= bed_path
@@ -225,6 +228,7 @@ class QualityControl:
         except Exception as e:
             print(f"An error occurred while performing Hardy-Weinberg test: {e}")
             return genotype_data, []    # Initialize lists to store results
+
         
     def filter_missingness_samples(self, genotype_data: pd.DataFrame, fam: pd.DataFrame, output_prefix) -> pd.DataFrame:
         """
