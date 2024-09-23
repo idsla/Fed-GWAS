@@ -20,7 +20,7 @@ class QualityControl:
         self.bed_snp = self.load_snpreader_bed()
         self.geno= self.load_genotype_data()
         self.y= pd.DataFrame(self.bed.get_fam(), columns=['fid', 'iid', 'father', 'mother', 'gender', 'status'])
-        self.bim= pd.DataFrame(self.bed.get_fam())
+        self.bim= pd.DataFrame(self.bed.get_bim())
         self.report=[]
         #self.X_normalized = self._preprocess_genotpe_data()
     
@@ -434,10 +434,13 @@ class QualityControl:
                 elif func_name =="filter_missingness_samples":
                     print("filter missingness samples")
                     func(self.geno, self.y, output_prefix="output")
-
+                elif func_name =='geno':
+                    print("geno function started")
+                    func(self.geno, self.bim, self.threshold, output_prefix="output")
+                else:
+                    print(f"{func_name} is not a valid function.")   
                 
-            else:
-                print(f"{func_name} is not a valid function.")    
+             
 # qc = QualityControl(bed_path="C:/Users/smith/OneDrive/Documents/GitHub/Fed-GWAS/data/begin.cc", bim_path="data/begin.cc.bim", fam_path="data/begin.cc.fam", threshold=0.05)
 # qc.run_quality_control(output_report_path='qc_report.txt')
 
@@ -448,7 +451,8 @@ def main():
         'filter_maf_variants',
         'calculate_missing_rate',
         'hardy_weinberg_test',
-        'filter_missingness_samples'
+        'filter_missingness_samples',
+        'geno'
 
     ]
 
