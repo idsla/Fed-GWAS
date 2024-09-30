@@ -8,3 +8,4 @@ __init__.py
 *.log
 __pycache__
 *.log
+data
