@@ -36,6 +36,7 @@ class IODataHandler:
         self.bed_path = bed_path
         self.bim_path = bim_path
         self.fam_path = fam_path
+        print(f"IOhandler bed path {bed_path}")
 
     def read_bed(self):
         try:

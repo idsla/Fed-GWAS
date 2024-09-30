@@ -13,45 +13,57 @@ def main():
 if __name__== "__main__":
     main()
     filename = 'data/begin.cc'
-    bed=reader.snp_reader_Bed(filename)
-    bedpy= PyPlink(filename)
-    bimdf= bedpy.get_bim()
-    print(bimdf)
-    chrom=bimdf['chrom']
-    a1=bimdf['a1']
-    a2=bimdf['a2']
-    pos=bimdf['pos']
-    snps, mafs, nchrobs = [], [], []
+    count=1
+    bed=PyPlink(filename)
+    with PyPlink(filename) as bed:
+        genotypes = []
+        for snp in bed:
+            genotypes.append(snp[1])
+            if count> 5:
+                break
+            count= count+1
+            genotypes_df= pd.DataFrame((genotypes)).T
+    print(f"genotype df sucessfully completed-->{genotypes_df}")
+    # filename = 'data/begin.cc'
+    # bed=reader.snp_reader_Bed(filename)
+    # bedpy= PyPlink(filename)
+    # bimdf= bedpy.get_bim()
+    # print(bimdf)
+    # chrom=bimdf['chrom']
+    # a1=bimdf['a1']
+    # a2=bimdf['a2']
+    # pos=bimdf['pos']
+    # snps, mafs, nchrobs = [], [], []
     
-    for i in range(bed.sid_count):
-        # Read the genotype data for the SNP
-        genotype = bed[:, i].read().val.flatten()
+    # for i in range(bed.sid_count):
+    #     # Read the genotype data for the SNP
+    #     genotype = bed[:, i].read().val.flatten()
         
-        # Calculate allele counts
-        count_a1 = 2 * (genotype == 0).sum() + (genotype == 1).sum()
-        count_a2 = 2 * (genotype == 2).sum() + (genotype == 1).sum()
-        no_of_chzms = count_a1 + count_a2
+    #     # Calculate allele counts
+    #     count_a1 = 2 * (genotype == 0).sum() + (genotype == 1).sum()
+    #     count_a2 = 2 * (genotype == 2).sum() + (genotype == 1).sum()
+    #     no_of_chzms = count_a1 + count_a2
         
-        # Calculate allele frequencies
-        freq_a1 = count_a1 / no_of_chzms
-        freq_a2 = count_a2 / no_of_chzms
+    #     # Calculate allele frequencies
+    #     freq_a1 = count_a1 / no_of_chzms
+    #     freq_a2 = count_a2 / no_of_chzms
         
-        # Calculate MAF
-        maf_coeff = min(freq_a1, freq_a2)
-        mafs.append(maf_coeff)
-        nchrobs.append(no_of_chzms)
-        snps.append(bed.sid[i])
+    #     # Calculate MAF
+    #     maf_coeff = min(freq_a1, freq_a2)
+    #     mafs.append(maf_coeff)
+    #     nchrobs.append(no_of_chzms)
+    #     snps.append(bed.sid[i])
 
-    df = pd.DataFrame({
-        'CHR': chrom,
-        'SNP': snps,
-        'POS': pos,
-        'A1': a1,
-        'A2': a2,
-        'MAF': mafs,
-        'NCHROBS': nchrobs
-    })
-    print(df.head())
+    # df = pd.DataFrame({
+    #     'CHR': chrom,
+    #     'SNP': snps,
+    #     'POS': pos,
+    #     'A1': a1,
+    #     'A2': a2,
+    #     'MAF': mafs,
+    #     'NCHROBS': nchrobs
+    # })
+    # print(df.head())
     # bedpy= PyPlink(filename)
     # print(bedpy.get_bim())
 

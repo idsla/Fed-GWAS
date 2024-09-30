@@ -3,6 +3,10 @@ import numpy as np
 from fedgwas.quality_control.qc_utils import QCUtils
 import logging
 from fedgwas.parameters import QUALITY_CONTROL
+import time
+from pyplink import PyPlink
+from pysnptools.snpreader import Bed
+import argparse
 # Configure logging
 logging.basicConfig(filename='report_QC.log', filemode='w', level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -10,39 +14,43 @@ logging.basicConfig(filename='report_QC.log', filemode='w', level=logging.DEBUG,
 from typing import List, Tuple, Dict, Union
 
 class QualityControl:
-
-    '''
-    Examle Usage:
-
-    qc = QualityControl(
-        params = [
-            ('filter_missingness_samples', {'min_maf': 0.05}),
-        ]
-    )
-
-    output_data = qc.perform_quality_control(input_data = ...)
-
-    qc.generate_report(output_path = ...)
-
-    '''
+    def __init__(self, bed_path: str, bim_path: str, fam_path:str, threshold: float):
+        self.bed_path= bed_path
+        self.bim_path= bim_path
+        self.fam_path = fam_path
+        self.threshold= threshold
+        self.bed= self.load_bed_file()
+        self.bed_snp = self.load_snpreader_bed()
+        self.geno= self.load_genotype_data()
+        self.y= pd.DataFrame(self.bed.get_fam(), columns=['fid', 'iid', 'father', 'mother', 'gender', 'status'])
+        self.bim= pd.DataFrame(self.bed.get_bim())
+        self.report=[]
+        #self.X_normalized = self._preprocess_genotpe_data()
     
-    def __init__(
-            self, params: List[Tuple[str, Dict[str, Union[int, float]]]]
-        ):
-        
-        # example
-        params = [
-            ('check_sex', {}),
-            ('calculate_missing_rate', {}),
-            ('calculate_maf', {}),
-            ('hardy_weinberg_test', {'threshold': 1e-6}),
-            ('filter_missingness_samples', {'min_maf': 0.05}),
-        ]
-    
-    def perform_quality_control():
-        pass
+    def log_report(self, message: str):
+        ''' helper function to generate report for the function executed'''
+        print(message)
+        self.report.append(message)
 
-    def check_sex(self, genotype_data: pd.DataFrame, bed):
+    def load_bed_file(self):
+        print(f"Loading .bed file from :{self.bed_path}")
+        return PyPlink(self.bed_path)
+    
+    def load_snpreader_bed(self):
+        print(f"snpreader bed file loaded")
+        return Bed(self.bed_path)
+    
+    def load_genotype_data(self)->pd.DataFrame:
+        print("loading Genotype file")
+        with PyPlink(self.bed_path) as bed:
+            genotypes = []
+            for snp in bed:
+                genotypes.append(snp[1])            
+            genotypes_df= pd.DataFrame((genotypes)).T
+        print("genotype df sucessfully completed")
+        return genotypes_df
+    
+    def check_sex(self):
         """
         Check the sex of individuals based on their homozygosity rate on the X chromosome.
 
@@ -53,9 +61,10 @@ class QualityControl:
         Returns:
         - A DataFrame containing the inferred sex and other information for each individual.
         """
+        self.log_report("Running Check Sex")
          # Load FAM and BIM data using the bed object
-        fam_df = pd.DataFrame(bed.get_fam(), columns=['fid', 'iid', 'father', 'mother', 'gender', 'status'])
-        bim_df = pd.DataFrame(bed.get_bim()).reset_index()
+        fam_df = pd.DataFrame(self.bed.get_fam(), columns=['fid', 'iid', 'father', 'mother', 'gender', 'status'])
+        bim_df = pd.DataFrame(self.bed.get_bim()).reset_index()
         # Filter for X chromosome SNPs (assuming '23' is the X chromosome)
         x_chromosome_snps = bim_df[bim_df['chrom'] == 23]['snp'].dropna()
         # Process each individual
@@ -64,8 +73,9 @@ class QualityControl:
             observed_homoz = []
             for snp in x_chromosome_snps:
                 # Get the genotype for the current SNP and individual
-                genotype = bed.get_geno_marker(snp)[index]
+                genotype = self.bed.get_geno_marker(snp)[index]
                 observed_homoz.append(genotype)
+            #print(f"observed_homoz -->{observed_homoz}")
             observed_homozygosity = self.calculate_snpsex(np.array(observed_homoz))
             snpsexBn = 1 if observed_homozygosity > 0.8 else 2
             # Determine status (OK/PROBLEM) based on whether SNPSEX matches the reported sex
@@ -80,12 +90,12 @@ class QualityControl:
                 'STATUS': status,
                 'F': F
             })
-            # Convert results to DataFrame
-            results_df = pd.DataFrame(results)
-            print(results_df.head())
-            return results_df
-    
-    def calculate_snpsex(genotypes: np.ndarray):
+        # Convert results to DataFrame
+        results_df = pd.DataFrame(results)
+        print(results_df.head())
+        return results_df
+
+    def calculate_snpsex(self,genotypes: np.ndarray):
         """
         Calculate the homozygosity rate based on the provided genotypes.
 
@@ -95,6 +105,7 @@ class QualityControl:
         Returns:
         - The homozygosity rate as a float.
         """
+        self.log_report("Running snp Sex")
         # Count homozygous genotypes (0/0 and 2/2)
         homozygous = sum(genotypes == 0) + sum(genotypes == 2)
         # Calculate the total number of valid genotypes (ignoring missing data)
@@ -102,28 +113,16 @@ class QualityControl:
         # Compute the homozygosity rate
         homo_rate = homozygous / total_valid if total_valid > 0 else 0
         return homo_rate
-        
-
-    def calculate_missing_rate(self, genotype_data: pd.DataFrame, bed, output_prefix: str):
-        """
-        Calculate missing rates per SNP and per individual.
-
-        Parameters:
-        genotype_data (pd.DataFrame): DataFrame containing genotype data where rows represent individuals and columns represent SNPs.
-        bed: An object containing 'iid' (individual IDs) and 'sid' (SNP IDs).
-        output_prefix (str): Prefix for the output files.
-
-        Returns:
-        Two DataFrames, one for SNP missing rates and one for individual missing rates.
-        """
-   
+    
+    def calculate_missing_rate(self, genotype_data: pd.DataFrame, output_prefix: str):
+        self.log_report("Calculate missing Rate")
         try:
             n_individuals, n_snps = genotype_data.shape
 
             # Calculate missing rates per SNP
             missing_per_snp = np.sum(np.isnan(genotype_data), axis=0) / n_individuals
             snp_data = pd.DataFrame({
-                'SNP': bed.sid,  # Ensure bed.sid is correctly assigned
+                'SNP': self.bed_snp.sid,  # Ensure bed.sid is correctly assigned
                 'N_MISS': np.sum(np.isnan(genotype_data), axis=0),
                 'N_GENO': n_individuals,
                 'F_MISS': missing_per_snp
@@ -132,8 +131,8 @@ class QualityControl:
             # Calculate missing rates per individual
             missing_per_ind = np.sum(np.isnan(genotype_data), axis=1) / n_snps
             ind_data = pd.DataFrame({
-                'FID': bed.iid[:, 0],  # Ensure bed.iid is correctly assigned
-                'IID': bed.iid[:, 1],
+                'FID': self.bed_snp.iid[:, 0],  # Ensure bed.iid is correctly assigned
+                'IID': self.bed_snp.iid[:, 1],
                 'N_MISS': np.sum(np.isnan(genotype_data), axis=1),
                 'N_GENO': n_snps,
                 'F_MISS': missing_per_ind
@@ -147,14 +146,15 @@ class QualityControl:
         except Exception as e:
             print(f"An error occurred while calculating missing rates: {e}")
             return pd.DataFrame(), pd.DataFrame()
-    
-    def calculate_maf(self, bed_file: pd.DataFrame):
+
+    def calculate_maf(self):
             '''
             This functions aims to calculate maf taking a DataFrame of bed file as input and returns a dataFrame containing maf column 
             minor allele and major allele and some other parameters
             '''
-            bim_df = pd.DataFrame(bed_file.get_bim()).reset_index()
-            genotype_df =self.count_genotype(bed_file)
+            self.log_report("Calculate maf ")
+            bim_df = pd.DataFrame(self.bed.get_bim()).reset_index()
+            genotype_df =self.count_genotype(self.bed)
             snps, mafs,nchrobs =[], [], []
 
             for snp, genotype in genotype_df.iterrows():
@@ -200,9 +200,9 @@ class QualityControl:
         genotype_df = pd.DataFrame.from_dict(genotype_counts,orient='index')
         genotype_df = genotype_df.fillna(0)
         return genotype_df
-    
-    def hardy_weinberg_test(self, genotype_data: pd.DataFrame, threshold: float):
+    def  hardy_weinberg_test(self, genotype_data: pd.DataFrame, threshold: float):
         """Perform Hardy-Weinberg Equilibrium test and filter SNPs based on the threshold."""
+        self.log_report(f"Perform Hardy-Weinberg Equilibrium test and filter SNPs based on the threshold {threshold}")
         try:
             # Initialize lists to store results
             hwe_results = []
@@ -223,7 +223,7 @@ class QualityControl:
 
             # Create filtered genotype data
             filtered_geno = genotype_data.iloc[:, snp_indices_to_keep]
-
+            print(f"hardy Weinberg test {filtered_geno.head()}")
             return filtered_geno, snp_indices_to_keep
         except Exception as e:
             print(f"An error occurred while performing Hardy-Weinberg test: {e}")
@@ -242,6 +242,7 @@ class QualityControl:
         Returns:
         - pd.DataFrame: Filtered FAM data.
         """
+        self.log_report(f"Filter individuals based on missing genotype data and save the filtered FAM file")
         n_individuals, n_snps = genotype_data.shape
         threshold = QUALITY_CONTROL['filter_missingness_samples']['threshold']
         # Calculate the proportion of missing genotypes for each individual
@@ -265,6 +266,7 @@ class QualityControl:
         # Save the filtered data to new PLINK files
         # Write FAM file
         fam.to_csv(f"{output_prefix}.fam", sep=" ", header=False, index=False)
+        print(f" filter missingness sample {fam.head()}")
         return filtered_fam
     
     def geno(self, genotypes, bim, threshold, output_prefix):
@@ -321,20 +323,20 @@ class QualityControl:
         """
          
         if maf_min is not None:
-            df = df[df['MAF'] >= maf_min]
+            genotype_data = genotype_data[genotype_data['MAF'] >= maf_min]
         if maf_max is not None:
-            df = df[df['MAF'] <= maf_max]
+            genotype_data = genotype_data[genotype_data['MAF'] <= maf_max]
         if mac_min is not None:
             # Calculating minor allele counts
-            df['MAC'] = df.apply(lambda row: min(row['NCHROBS'] * row['MAF'], (1 - row['MAF']) * row['NCHROBS']), axis=1)
-            df = df[df['MAC'] >= mac_min]
+            genotype_data['MAC'] = genotype_data.apply(lambda row: min(row['NCHROBS'] * row['MAF'], (1 - row['MAF']) * row['NCHROBS']), axis=1)
+            genotype_data = genotype_data[genotype_data['MAC'] >= mac_min]
         if mac_max is not None:
             # Ensure MAC is already calculated
-            if 'MAC' not in df.columns:
-                df['MAC'] = df.apply(lambda row: min(row['NCHROBS'] * row['MAF'], (1 - row['MAF']) * row['NCHROBS']), axis=1)
-            df = df[df['MAC'] <= mac_max]
-
-        return df
+            if 'MAC' not in genotype_data.columns:
+                genotype_data['MAC'] = genotype_data.apply(lambda row: min(row['NCHROBS'] * row['MAF'], (1 - row['MAF']) * row['NCHROBS']), axis=1)
+            genotype_data = genotype_data[genotype_data['MAC'] <= mac_max]
+        print(genotype_data.head())
+        return genotype_data
 
     # def filter_data():
     #     raise NotImplementedError
@@ -360,3 +362,125 @@ class QualityControl:
         #     report_file.write(f"Genotyping Rate: {non_missing_genotypes / (total_individuals * total_variants):.6f}\n")
         #     report_file.write(f"Variants Remaining after Filtering: {len(filtered_snps)}\n")
         #     report_file.write(f"Variants Removed due to Minor Allele Thresholds: {total_variants - len(filtered_snps)}\n")       
+
+
+    def run_quality_control(self, output_report_path: str):
+        '''
+        Function to runn all the quality control checks in sequence. Generates a final report as summary at the end.
+        '''
+        try:
+            start_time= time.time()
+            print("starting Quality Control")
+            #Check sex
+            print("check Sex function")
+            self.check_sex()
+            #Calculate missing Rate
+            print("Calculate Missing Rate")
+            snp_data, ind_data= self.calculate_missing_rate(genotype_data=self.geno, output_prefix="output")
+            print(snp_data.head())
+            #Calculate MAF
+            print("Calculate MAF function")
+            maf_df= self.calculate_maf()
+            # Filter Maf
+            print("Filter MAF function")
+            filtered_maf_df = self.filter_maf_variants(
+                maf_df, 
+                maf_min=None,  # Set your MAF minimum threshold
+                maf_max=0.5,   # Set your MAF maximum threshold
+                mac_min=None,    # Set your MAC minimum threshold
+                mac_max=None   # Optional: You can omit the mac_max if not needed
+            )
+            print(f"Filter maf genotypes {filtered_maf_df.head()}")
+            #Hardy-Weinberg test
+            print("Calculate hardy Weinberg test")            
+            filtered_geno, snp_indices_to_keep = self.hardy_weinberg_test(self.geno,threshold=0.5)
+            print(f"Filter genotypes from hardy_wei -->{filtered_geno.head()}")
+            #Filter individuals based on missingness
+            filtered_fam= self.filter_missingness_samples(self.geno, self.y, output_prefix="output")
+            print(f"Filter fam -->{filtered_fam.head()}")
+            #Filter SNPs based on missing Genotype data
+            #filtered_bim =  self.geno(self.geno, self.bim, output_prefix="output")
+            end_time = time.time()
+            print("Quality COntrol Completed")
+            # total_variants= len(self.snp_ids)
+            # total_individuals= len(self.y)
+            # filtered_snps= len(filtered_bim)
+            # non_missing_genotypes= filtered_geno.count().sum()
+
+            #self.generate_report(output_report_path, start_time, end_time, total_variants, total_individuals, filtered_snps, non_missing_genotypes)
+        except Exception as e:
+            print(f"An error accurred during Quality contro;:{e}")
+            logging.error(f"Error occured during Quality Control: {e}")
+        
+    def run_quality_control_pipeline(self, selected_functions):
+        """
+        Run the selected QC functions based on user input.
+        """
+        for func_name in selected_functions:
+            func=getattr(self, func_name)
+            if callable(func):
+                if func_name == "filter_maf_variants":
+                    print("filter_maf_variant")
+                    maf_data= self.calculate_maf()
+                    func(maf_data, 
+                    maf_min=None,  # Set your MAF minimum threshold
+                    maf_max=0.5,   # Set your MAF maximum threshold
+                    mac_min=None,    # Set your MAC minimum threshold
+                    mac_max=None   # Optional: You can omit the mac_max if not needed
+                    )
+                    print(f"Runing { func_name}....")
+                elif func_name =="calculate_missing_rate":
+                    print("Calculate Missing rate")
+                    func(genotype_data=self.geno, output_prefix="output")
+                elif func_name =='hardy_weinberg_test':
+                    print("Hardy Weinberg test")
+                    func(self.geno,threshold=self.threshold)
+                elif func_name =="filter_missingness_samples":
+                    print("filter missingness samples")
+                    func(self.geno, self.y, output_prefix="output")
+                elif func_name =='geno':
+                    print("geno function started")
+                    func(self.geno, self.bim, self.threshold, output_prefix="output")
+                else:
+                    print(f"{func_name} is not a valid function.")   
+                
+             
+# qc = QualityControl(bed_path="C:/Users/smith/OneDrive/Documents/GitHub/Fed-GWAS/data/begin.cc", bim_path="data/begin.cc.bim", fam_path="data/begin.cc.fam", threshold=0.05)
+# qc.run_quality_control(output_report_path='qc_report.txt')
+
+def main():
+
+    available_functions=[
+        'check_sex',
+        'filter_maf_variants',
+        'calculate_missing_rate',
+        'hardy_weinberg_test',
+        'filter_missingness_samples',
+        'geno'
+
+    ]
+
+    for idx, func in enumerate(available_functions,1):
+        print(f"{idx}.  {func}")
+
+    selected_indices= input("Enter the numbers of the functions to run (e.g. 1 3 for this first and third) ").split()
+
+    try: 
+        #covert selected indices to function names
+        selected_functions=[available_functions[int(i)-1] for i in selected_indices]
+    except(ValueError, IndexError):
+        print("Invalid Selection, please enter valid numbers")
+        return
+
+    bed_path="C:/Users/smith/OneDrive/Documents/GitHub/Fed-GWAS/data/begin.cc"
+    bim_path="data/begin.cc.bim"
+    fam_path="data/begin.cc.fam"
+    threshold=0.05
+    
+    qc = QualityControl(bed_path=bed_path, bim_path=bim_path, fam_path=fam_path, threshold=threshold)
+
+    qc.run_quality_control_pipeline(selected_functions)
+
+if __name__=="__main__":
+    main()
+
