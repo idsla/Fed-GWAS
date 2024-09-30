@@ -2,12 +2,18 @@ import numpy as np
 from pandas_plink import read_plink
 import logging
 from fedgwas.parameters import KINSHIP
+from .base_qc_module import BaseQCModule
 
 # Setup logging
 logging.basicConfig(filename='king_analysis.log', level=logging.INFO, format='%(message)s')
 
-class KinshipAnalyzer:
+class KinshipAnalyzer(BaseQCModule):
+    """
+    Performs KING kinship analysis on genotype data.
+    """
+
     def __init__(self):
+        super().__init__()
         self.firstkin = KINSHIP['final_kinship_estimate']['firstkin']
         self.secondkin = KINSHIP['final_kinship_estimate']['secondkin']
         self.thirdkin = KINSHIP['final_kinship_estimate']['thirdkin']

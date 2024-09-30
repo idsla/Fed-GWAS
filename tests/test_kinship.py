@@ -1,5 +1,5 @@
 import pandas as pd
-from fedgwas.kinship.kinship import KinshipAnalyzer, KinshipLogger
+from fedgwas.quality_control.modules.kinship import KinshipAnalyzer, KinshipLogger
 import argparse
 from pyplink import PyPlink
 from pandas_plink import read_plink

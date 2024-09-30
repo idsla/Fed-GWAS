@@ -2,7 +2,7 @@ import flwr as fl
 import numpy as np
 from pysnptools.snpreader import Bed
 from fedgwas.parameters import KINSHIP
-from fedgwas.kinship.kinship import KinshipAnalyzer
+from fedgwas.quality_control.modules.kinship import KinshipAnalyzer
 from fedgwas.io.reader import IODataHandler
 import csv
 from typing import List, Tuple, Dict, Any

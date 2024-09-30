@@ -14,6 +14,7 @@ logging.basicConfig(filename='report_QC.log', filemode='w', level=logging.DEBUG,
 from typing import List, Tuple, Dict, Union
 
 class QualityControl:
+    
     def __init__(self, bed_path: str, bim_path: str, fam_path:str, threshold: float):
         self.bed_path= bed_path
         self.bim_path= bim_path
@@ -186,6 +187,7 @@ class QualityControl:
 
             print(df.head())
             return df
+    
     def count_genotype(self, bedfile):
         '''
         Generate count of genotype
@@ -200,7 +202,8 @@ class QualityControl:
         genotype_df = pd.DataFrame.from_dict(genotype_counts,orient='index')
         genotype_df = genotype_df.fillna(0)
         return genotype_df
-    def  hardy_weinberg_test(self, genotype_data: pd.DataFrame, threshold: float):
+    
+    def hardy_weinberg_test(self, genotype_data: pd.DataFrame, threshold: float):
         """Perform Hardy-Weinberg Equilibrium test and filter SNPs based on the threshold."""
         self.log_report(f"Perform Hardy-Weinberg Equilibrium test and filter SNPs based on the threshold {threshold}")
         try:
