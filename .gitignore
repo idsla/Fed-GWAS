@@ -6,3 +6,5 @@ site
 __init__.py
 *.csv
 *.log
+__pycache__
+*.log
