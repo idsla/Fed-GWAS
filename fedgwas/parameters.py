@@ -1,9 +1,12 @@
 QUALITY_CONTROL = {
-    'missingness':{
+    'filter_missingness_samples':{
         'threshold': 0.05,     # threshold for filtering missingness
     },
-    'hwe':{
+    'hardy_weinberg_test':{
         'threshold': 1e-6 ,     # threshold for HWE 
+    },
+    'geno':{
+        'threshold': 0.05,     # threshold for filtering missingness
     }
 }
 

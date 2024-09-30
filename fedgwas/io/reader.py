@@ -20,7 +20,7 @@ class IODataHandler:
     """
     Class to handle loading, processing, and saving genotype data.
     """
-    def __init__(self, bed_path: str, bim_path: str, fam_path: str):
+    def __init__(self, bed_path: str, bim_path: str =None, fam_path: str=None):
         """
         Initialize the GenotypeDataHandler with the path to the .bed file.
 

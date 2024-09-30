@@ -207,7 +207,7 @@ class QualityControl:
             # Initialize lists to store results
             hwe_results = []
             snp_indices_to_keep = []
-            threshold = QUALITY_CONTROL['hwe']['threshold']
+            threshold = QUALITY_CONTROL['hardy_weinberg_test']['threshold']
             for snp_idx in range(genotype_data.shape[1]):
                 snp_geno = genotype_data.iloc[:, snp_idx].values  # Convert to NumPy array
                 obs_hom1 = np.sum(snp_geno == 0)
@@ -243,7 +243,7 @@ class QualityControl:
         - pd.DataFrame: Filtered FAM data.
         """
         n_individuals, n_snps = genotype_data.shape
-        threshold = QUALITY_CONTROL['missingness']['threshold']
+        threshold = QUALITY_CONTROL['filter_missingness_samples']['threshold']
         # Calculate the proportion of missing genotypes for each individual
         missing_per_ind = np.sum(np.isnan(genotype_data), axis=1) / n_snps
         # Identify individuals to keep
@@ -280,7 +280,7 @@ class QualityControl:
         - pd.DataFrame: Filtered BIM data.
         """
         n_individuals, n_snps = genotypes.shape
-        threshold = QUALITY_CONTROL['missingness']['threshold']       
+        threshold = QUALITY_CONTROL['geno']['threshold']       
 
         # Calculate the proportion of missing genotypes for each SNP using the filtered genotype matrix
         snp_missing_proportions = np.sum(np.isnan(genotypes), axis=0) / n_individuals
