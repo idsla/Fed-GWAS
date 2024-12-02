@@ -45,3 +45,9 @@ poetry remove <package-name>
 # deactivate environment
 exit
 ```
+
+# Instruction to run the pipeline 
+1. Run the server and give the qc method name which you want to run like hwe , mind , geno etc. (Any order of method is supported)
+python Flower/qcServer.py --methods hwe snp_missingness ind_missingness maf_filter mind geno calculate_maf
+2. Run the server and give the qc method name which you want to run like hwe , mind , geno etc. (Any order of method is supported)
+python Flower/qcClient.py --client_id 1 --bed_file /Users/sonamrathod/Documents/Rutgers/Project/Git_Repo/cc.qc3.bed --bim_file /Users/sonamrathod/Documents/Rutgers/Project/Git_Repo/cc.qc3.bim --fam_file /Users/sonamrathod/Documents/Rutgers/Project/Git_Repo/cc.qc3.fam --methods hwe snp_missingness ind_missingness maf_filter mind geno calculate_maf
