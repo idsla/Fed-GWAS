@@ -5,3 +5,4 @@ nav:
       - 'Quality Control': 'user-guide/quality_control.md'
       - 'Kinship': 'user-guide/kinship.md'
       - 'Association Analysis': 'user-guide/association_analysis.md'
+      - 'Pipeline': 'user-guide/pipeline.md'

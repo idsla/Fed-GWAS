@@ -5,7 +5,7 @@ import logging
 from fedgwas.parameters import QUALITY_CONTROL
 import time
 from pyplink import PyPlink
-from pysnptools.snpreader import Bed
+from pysnptools.snpreader import Bed 
 import argparse
 # Configure logging
 logging.basicConfig(filename='report_QC.log', filemode='w', level=logging.DEBUG,
@@ -304,7 +304,8 @@ class QualityControl:
         
         # Save the filtered data to new PLINK files
         # Write BIM file
-        bim.to_csv(f"{output_prefix}.bim", sep="\t", header=False, index=False)
+        print("Filter bim from Geno --->",filtered_bim.head())
+        filtered_bim.to_csv(f"{output_prefix}.csv", sep="\t", header=False, index=False)
         return filtered_bim
 
     def filter_maf_variants(self, genotype_data: pd.DataFrame, maf_min=None, maf_max=None, mac_min=None, mac_max=None) -> pd.DataFrame:
@@ -440,7 +441,7 @@ class QualityControl:
                     func(self.geno, self.y, output_prefix="output")
                 elif func_name =='geno':
                     print("geno function started")
-                    func(self.geno, self.bim, self.threshold, output_prefix="output")
+                    func(self.geno, self.bim, self.threshold, output_prefix="geno_data")
                 else:
                     print(f"{func_name} is not a valid function.")   
                 
