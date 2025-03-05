@@ -11,13 +11,13 @@
 - **Robust Error Handling**: Handle edge cases, missing data, incompatible inputs (such as different SNP formats), and distributed errors that may occur in federated environments (such as client communication failures).
 - **Logging System**: Implement logging to track execution processes, including data processing steps, errors, model updates, and performance metrics, especially in federated settings to track data flow and updates from different clients.
 
-## 3. Visualization Tools and Collaboration Features
+### 3. Visualization Tools and Collaboration Features
 - **Data Visualization**: Develop visualization tools for key analysis steps, such as quality control metrics, association analysis results, and kinship coefficient matrices. Visualize the global model and client contributions in federated learning in a user-friendly way.
 - **Federated Learning Visualization**: Create a visualization interface for the federated learning process, showing each client's contribution to the global model, tracking performance in each iteration, and supporting viewing of model update processes and synchronization status.
 - **Collaboration Dashboard**: Build a web-based collaboration dashboard to display federated cooperation progress, showing each client's contributions, model progress, and analysis status.
 - **Version Control**: Implement version control for models and analysis scripts to ensure reproducibility between different teams in federated settings.
 
-# 4. Automated Testing and Continuous Integration
+### 4. Automated Testing and Continuous Integration
 - **Unit Testing**: Develop unit tests to ensure the correctness of each module and function in the pipeline, covering both centralized and federated implementations.
 - **Continuous Integration (CI)**: Set up continuous integration pipelines to automatically test code changes, ensuring quality control before each release, especially for distributed training and federated learning validation in distributed environments.
 
