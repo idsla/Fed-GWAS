@@ -1,4 +1,4 @@
-# Implementation Plan
+<!-- # Implementation Plan
 
 ## Documentation, Error and Logging, Visualization,Testing, CI/CD
 
@@ -48,49 +48,70 @@
 - **Data Storage and Synchronization**: Optimize data storage and synchronization strategies to ensure efficiency and synchronicity of data transfer between clients, reducing latency.
 
 ### Parallel Computing
-- **Parallel Computation**: Ensure support for parallel computing, especially in federated environments, with reasonable scheduling of computational tasks to improve computational efficiency.
+- **Parallel Computation**: Ensure support for parallel computing, especially in federated environments, with reasonable scheduling of computational tasks to improve computational efficiency. -->
 
-# Project Timeline
+# Project Timeline (3.10 -  4.30)
 
-## Phase 1: Core Functionality Optimization and Extension
-**Objective:** Complete the basic framework of the pipeline, ensure documentation completeness, and establish basic functionality.
+## Phase 1: Core Functionality Optimization and Extension - 4 weeks
 
- - **Implement and Refine Centralized Pipeline Functionality (Finalize API):**
-  - Continue to refine Quality Control (QC), association analysis, kinship inference, and data validation modules to ensure complete functionality in centralized environments.
+ - **Implement and Refine Centralized Pipeline Functionality - Assign: @sonam @sitao (1 week)**
+  - Finalize API (parameters, return) for each functions in data cleaning (missing values, coin data detection, Hardy-Weinberg equilibrium tests, etc.), association analysis (linear regression, logistic regression), kinship analysis (KING coefficient calculation). and data validation modules to ensure complete functionality in centralized environments.
+  - Modulize Quality Control (QC), association analysis, kinship inference, and data validation modules => encapsulate functions in Class (keep state of internal results and outputs in class)
+  - Integrate PLINK for basic computations and ensure compatibility with external tools into functions.
+  - Implement test functions for each function and module in the pipeline and test correctness and consistency.
 
-- **Dataset Integration and API (I/O) Design:**
-  - All of Us and Human 1000 Genome datasets
+- **Dataset Integration and API (I/O) Implementation - Assign: @sonam @xinyue (0.5-1 week)**
+  - Implement function/API for loading Human 1000 Genome datasets and test the correctness of the data loading process.
+  - Test GWAS functions after reading Human 1000 Genome datasets.
+  - Implement function/API for loading AllofUs datasets and test the correctness of the data loading process in AllofUs platform.
 
-- **Integrate Quality Control (QC), Association Analysis, Kinship Inference, and Data Validation Modules:**
-  - Complete genetic data cleaning (missing values, coin data detection, Hardy-Weinberg equilibrium tests, etc.), association analysis (linear regression, logistic regression), kinship analysis (KING coefficient calculation).
-  - **Tech Stack**: Pandas, SciPy, Scikit-learn, PLINK (as an external tool, PLINK interface)
+- **Implement and Refine Federated GWAS module and pipeline - Assign: @sitao and @sonam (1-2 week)**
+  - Refine federated GWAS API
+    - Use the **Flower** framework to configure a distributed learning environment and ensure models can run on multiple clients with synchronization and updates.
+    - Finalize API parameters and return values
+    - Ensure API calls centralized functions
+    - Implement test function for each API and test the correctness and consistency
+    - Complete simple federated learning training tasks to ensure basic client communication and model synchronization work.
+  - Implement single-node running API (command line interface + parameters) for fedGWAS and test the pipeline in a single-node environment.
+  - Implement multiple-node running API (commnad line interface + parameters) for fedGWAS and test the pipeline in a multiple-node environment.
 
-- **Complete User Guide and API Documentation:**
-  - Ensure detailed API documentation, including input/output formats, functionality descriptions, and examples.
-  - Write simple tutorials explaining how to set up and use the pipeline.
-
-- **Optimize Error Handling and Logging System:**
+  - **Optimize Error Handling, Output Report format and Logging System - Assign: @xinyue @sonam (1 week)**
   - Add comprehensive error handling mechanisms to the pipeline to handle client communication errors, data inconsistencies, etc. in distributed environments.
-  - Use the **logging** module to create a logging system to record model updates, data synchronization, runtime, etc. for each client.
+  - Design which information to save, output, logging, and using **logging** module to create a logging system to record model updates, data synchronization, runtime, etc. for each client.
+  - Implement results saving and report generation functionality to store and display quality control metrics, association analysis results, and kinship coefficient matrices.
+  - Implement a logging system to track execution processes, including data processing steps, errors, model updates, and performance metrics, especially in federated settings to track data flow and updates from different clients.
 
-- **Configure and Test Flower Framework for Federated Learning:**
-  - Use the **Flower** framework to configure a distributed learning environment and ensure models can run on multiple clients with synchronization and updates.
-  - Complete simple federated learning training tasks to ensure basic client communication and model synchronization work.
 
-### Phase 2: Model Evaluation and Validation
+### Phase 2: Model Evaluation and Benchmarking - 2 weeks
+
 **Objective:** Enhance model evaluation functionality to ensure result reliability.
 
-- **Implement Cross-Validation Techniques and Biological Validation Processes:**
+- **Implement Cross-Validation Techniques and Biological Validation Processes- Assign: @sonam @xinyue (1 week)**
   - Conduct result validation on each client.
   - Perform biological validation in external tools to ensure SNPs are associated with known diseases or phenotypes.
 
-- **Complete Compatibility Integration with External Tools:**
-  - Integrate external tools like **PLINK** into the pipeline to ensure seamless data format conversion and necessary analysis execution.
-
-- **Conduct Performance Benchmarking:**
+- **Conduct Performance Benchmarking - Assign: @xinyue @sonam @sitao (1 week)**
+  - Design benchmarking plan and experiments details.
   - Run performance benchmarks on large-scale datasets to ensure the pipeline runs efficiently in federated environments.
   - Compare execution time and memory usage under different data scales, especially efficiency in federated environments.
   - **Tech Stack**: Python, cProfile, timeit
+
+### Phase 4: Visualization and Collaboration Features - 1 week
+**Objective:** Develop visualization tools and collaboration platforms to enhance user experience and collaboration efficiency.
+
+- **Develop Data Visualization Tools using Tensorboard - @sitao @sonam (1 week)**
+  - Develop visualization tools for displaying quality control metrics, association analysis results, and kinship coefficient matrices.
+
+- **Build Web Collaboration Dashboard - TBD**
+  - Use **Flask** or **Django** to build a web dashboard displaying the progress, contributions, and results of each client in the federated learning process.
+
+### Phase 3: Tool Documentation, Testing and Report - 1 week
+
+- **Complete User Guide and API Documentation - Assign: @sitao @xinyue**
+  - Ensure detailed API documentation, including input/output formats, functionality descriptions, and examples.
+  - Write simple tutorials explaining how to set up and use the pipeline.
+  - Github page for the project, including installation instructions, usage examples, and API documentation.
+  - Report and Paper writing for the project.
 
 <!-- ### Phase 3: Security and Privacy Protection
 **Objective:** Enhance data protection and privacy to ensure compliance with relevant security standards.
@@ -115,16 +136,8 @@
   - Implement multi-threading or multi-process parallel computing to optimize data processing and model training efficiency, especially in federated learning environments.
   - Multiprocessing, Threading, Dask -->
 
-### Phase 3: Visualization and Collaboration Features
-**Objective:** Develop visualization tools and collaboration platforms to enhance user experience and collaboration efficiency.
 
-- **Develop Data Visualization Tools:**
-  - Develop visualization tools for displaying quality control metrics, association analysis results, and kinship coefficient matrices.
-
-- **Build Web Collaboration Dashboard:**
-  - Use **Flask** or **Django** to build a web dashboard displaying the progress, contributions, and results of each client in the federated learning process.
-
-### Phase 4: Automated Testing and Continuous Integration
+### Phase 5: Automated Testing and Continuous Integration
 **Objective:** Ensure code quality, automate testing, and integrate into the development process.
 
 - **Set Up Automated Unit Testing and Continuous Integration Pipeline:**
