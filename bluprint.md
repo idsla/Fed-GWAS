@@ -39,6 +39,7 @@
 ## Others
 
 ### Security and Privacy Enhancements
+
 - **Channel Encryption**: Implement encryption functionality for data in transit, ensuring security in federated learning and preventing security threats such as man-in-the-middle attacks (check Flower documentation).
 - **Access Control**: Establish appropriate user authentication and authorization protocols to manage access to the federated system, ensuring only authorized researchers can access and contribute data.
 
@@ -54,7 +55,7 @@
 ## Phase 1: Core Functionality Optimization and Extension
 **Objective:** Complete the basic framework of the pipeline, ensure documentation completeness, and establish basic functionality.
 
- **Implement and Refine Centralized Pipeline Functionality (Finalize API):**
+ - **Implement and Refine Centralized Pipeline Functionality (Finalize API):**
   - Continue to refine Quality Control (QC), association analysis, kinship inference, and data validation modules to ensure complete functionality in centralized environments.
 
 - **Dataset Integration and API (I/O) Design:**

@@ -1,0 +1,24 @@
+# client/config.yaml
+input_data:
+  path: "data/client_data"   # Path to PLINK data (without extension) or VCF file etc.
+  type: "bed"               # "bed" or "vcf"
+
+output:
+  intermediate_dir: "intermediate"
+  log_dir: "logs"
+
+parameters:
+  sample_offset: 1000000000000   # if not provided by DataLoader, default offset
+  chunk_size: 100                # default chunk size (by samples or SNPs)
+  sample_chunk_size: 100
+  snp_chunk_size: 100
+
+thresholds:
+  maf_threshold: 0.01
+  missing_threshold: 0.1
+  hwe_threshold: 1e-6
+  p_threshold: 1e-3
+
+flower:
+  server_address: "127.0.0.1:8080"
+  num_rounds: 10
