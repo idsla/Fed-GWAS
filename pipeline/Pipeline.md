@@ -119,9 +119,9 @@ The `config.yaml` file (in the `client/` directory) defines parameters such as:
 
 1. Navigate to the `server/` directory.
 2. Start the server:
-   ```bash
-   python main_server.py
-
+```bash
+python main_server.py
+```
 ### Client
 
 1.  Navigate to the client/ directory.
@@ -129,7 +129,7 @@ The `config.yaml` file (in the `client/` directory) defines parameters such as:
 3.  Start the client:
  ```bash
    python main_client.py
-
+```
 ### Data Loading
 
 The DataLoader class in data_loader.py:
