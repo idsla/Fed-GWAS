@@ -133,6 +133,7 @@ python main_server.py
 ### Data Loading
 
 The DataLoader class in data_loader.py:
+
     - reads the configuration from config.yaml.
     - Transforms input data if needed (e.g., converts a VCF file to PLINK binary format).
     - Provides configuration parameters (e.g., thresholds, chunk sizes, intermediate directories) to the client.
