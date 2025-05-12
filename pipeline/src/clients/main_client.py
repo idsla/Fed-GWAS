@@ -15,7 +15,7 @@ from local_qc import (
 )
 from iterative_king import handle_iterative_king
 from iterative_lr import handle_iterative_lr
-from data_loader import DataLoader
+from data_loder import DataLoader
 
 class FedLRClient(BaseGWASClient):
     def __init__(self, config_file="config.yaml", partition_by="samples"):
@@ -58,8 +58,14 @@ class FedLRClient(BaseGWASClient):
             # Example local computations for the server to aggregate
             counts_array = compute_genotype_counts(self.plink_prefix, self.client_id)
             missing_array = compute_missingness_counts(self.plink_prefix, self.client_id)
+            maf_thresh = config.get("maf_threshold", 0.01)
+            miss_thresh = config.get("missing_threshold", 0.1)
+            hwe_thresh = config.get("hwe_threshold", 1e-6)
+            
+            threshold_array = np.array([maf_thresh, miss_thresh, hwe_thresh], dtype=np.float64)
+            
             # Return them to the server for global aggregation
-            return [counts_array, missing_array], 1, {}
+            return [counts_array, missing_array, threshold_array], 1, {}
 
         # 3) global_qc_response: server returns SNPs or samples to exclude globally
         elif stage == "global_qc_response":

@@ -8,8 +8,7 @@ import os
 import logging
 import tarfile
 import hashlib
-
-
+import shutil
 logging.basicConfig(
     filename="iteration_log.txt",
     level=logging.INFO,
@@ -105,8 +104,9 @@ def anonymize_bed_chunk(
             fout.write("\t".join(parts) + "\n")
 
     # 3) Rename .bed
-    os.rename(bed_file, new_prefix + ".bed")
+    #os.rename(bed_file, new_prefix + ".bed")
 
+    shutil.copy(bed_file, new_prefix + ".bed")
     return sample_map, snp_map
 
 
@@ -214,11 +214,14 @@ class BaseGWASClient(fl.client.NumPyClient):
             with open(fam_file, "r") as f:
                 lines = f.readlines()
 
+            fid_map = {}
             sample_ids = []
             for line in lines:
                 parts = line.strip().split()
                 if len(parts) >= 2:
-                    sample_ids.append(parts[1])
+                    fid, iid = parts[0], parts[1]
+                    sample_ids.append(iid)
+                    fid_map[iid] = fid
 
             random.seed(self.global_seed)
             random.shuffle(sample_ids)
@@ -228,8 +231,11 @@ class BaseGWASClient(fl.client.NumPyClient):
             for idx, chunk_sids in enumerate(chunks):
                 keep_file = f"temp_keep_{self.client_id}_{idx}.txt"
                 with open(keep_file, "w") as f:
+                    f.write("FID IID\n")
                     for sid in chunk_sids:
-                        f.write(f"{sid}\n")
+                        fid = fid_map.get(sid, "0")  # Default to "0" if not found
+                        f.write(f"{fid} {sid}\n")
+                        #f.write(f"{sid}\n")
 
                 chunk_prefix = f"chunk_{self.client_id}_{idx}"
                 cmd = [

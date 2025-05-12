@@ -6,6 +6,7 @@ import flwr as fl
 from .aggregator_qc import aggregate_global_qc
 from .aggregator_king import run_server_king
 from .aggregator_lr import run_server_lr, merge_insign_snp_sets
+from flwr.common import parameters_to_ndarrays
 
 def secure_sum(seeds):
     """
@@ -22,6 +23,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
 
         self.global_exclusion = []
         self.lr_data = {}
+    
+    def current_stage_config(self):
+        return {"stage": self.current_stage}
 
     def on_fit_config_fn(self, rnd: int):
         if self.current_stage == "sync":
@@ -50,7 +54,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             local_seeds = []
             for _, fit_res in results:
                 if fit_res.parameters:
-                    seed_val = fit_res.parameters[0].numpy[0]
+                    ndarrays = parameters_to_ndarrays(fit_res.parameters)
+                    seed_val = ndarrays[0][0]
+                    #seed_val = fit_res.parameters[0].numpy[0]
                     local_seeds.append(seed_val)
             self.global_seed = secure_sum(local_seeds)
             self.current_stage = "global_qc"
@@ -59,11 +65,18 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         elif self.current_stage == "global_qc":
             partial_data = []
             for _, fit_res in results:
-                if len(fit_res.parameters) == 3:
+                ndarrays = parameters_to_ndarrays(fit_res.parameters)
+
+                if len(ndarrays) == 3:
+                    c_arr = ndarrays[0]
+                    m_arr = ndarrays[1]
+                    t_arr = ndarrays[2]
+                    partial_data.append([c_arr, m_arr, t_arr])
+                """ if len(fit_res.parameters) == 3:
                     c_arr = fit_res.parameters[0]
                     m_arr = fit_res.parameters[1]
-                    t_arr = fit_res.parameters[2]
-                    partial_data.append([c_arr, m_arr, t_arr])
+                    t_arr = fit_res.parameters[2] 
+                    partial_data.append([c_arr, m_arr, t_arr]) """
             excl_set = aggregate_global_qc(self, partial_data, config={
                 "maf_threshold": None,   # These thresholds will be unified from client data.
                 "missing_threshold": None,

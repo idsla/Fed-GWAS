@@ -1,6 +1,7 @@
 # server/aggregator_qc.py
 
 import numpy as np
+from scipy.stats import chi2
 
 def secure_sum_arrays(arrays):
     """
@@ -88,7 +89,7 @@ def aggregate_global_qc(server_strategy, partial_data, config):
         for obs, exp in [(N_AA, E_AA), (N_Aa, E_Aa), (N_aa, E_aa)]:
             if exp > 1e-9:
                 chi_sq += (obs - exp)**2 / exp
-        pval_hwe = 1 - chi2_cdf(chi_sq, df=1)
+        pval_hwe = 1 - chi2.cdf(chi_sq, df=1)
         if pval_hwe < hwe_final:
             exclude_indices.add(i)
             continue
