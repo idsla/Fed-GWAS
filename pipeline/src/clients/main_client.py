@@ -3,6 +3,7 @@
 import flwr as fl
 import logging
 import numpy as np
+import sys
 
 from base_client import BaseGWASClient
 from local_qc import (
@@ -34,6 +35,8 @@ class FedLRClient(BaseGWASClient):
         self.flower_config = loader.get_flower_config()
         # Additional parameters from config (e.g., chunk sizes)
         self.parameters = loader.get_parameters()
+        # Participation flags per stage from config
+        self.participation = loader.participation
         # For final LR significance, if desired
         self.lr_final = {}
         # For accumulating partial LR p-values
@@ -41,6 +44,10 @@ class FedLRClient(BaseGWASClient):
 
     def fit(self, parameters, config):
         stage = config.get("stage", "sync")
+        # Exit process if this client opts out of the current stage
+        if not self.participation.get(stage, True):
+            logging.info(f"[Client {self.client_id}] Exiting: not participating in stage '{stage}'")
+            sys.exit(0)
 
         # 1) local_qc: Filter samples by per-sample missing rate
         if stage == "local_qc":

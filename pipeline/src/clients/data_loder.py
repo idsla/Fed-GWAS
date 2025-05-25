@@ -15,6 +15,9 @@ class DataLoader:
         self.log_dir = self.config["output"].get("log_dir", "logs")
         self.thresholds = self.config.get("thresholds", {})
         self.parameters = self.config.get("parameters", {})
+        # Participation flags for each pipeline stage
+        self.participation = self.config.get("participation", {})
+
         self.flower_config = self.config.get("flower", {})
 
         os.makedirs(self.intermediate_dir, exist_ok=True)
@@ -55,3 +58,9 @@ class DataLoader:
 
     def get_flower_config(self):
         return self.flower_config
+
+    def get_participation(self):
+        """
+        Return the participation flags dict indicating which stages the client participates in.
+        """
+        return self.participation
