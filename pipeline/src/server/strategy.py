@@ -8,6 +8,20 @@ from .aggregator_king import run_server_king
 from .aggregator_lr import run_server_lr, merge_insign_snp_sets
 from flwr.common import parameters_to_ndarrays
 
+# Define which stage must precede each stage for client participation
+PREREQ_STAGE = {
+    "global_qc": None,
+    "global_qc_response": "global_qc",
+    "init_chunks": "global_qc_response",
+    "iterative_king": "init_chunks",
+    "local_lr": "iterative_king",
+    "local_lr_filter_response": "local_lr",
+    "init_chunks_lr": "local_lr_filter_response",
+    "iterative_lr": "init_chunks_lr",
+    # sync is the first stage
+    "sync": None,
+}
+
 def secure_sum(seeds):
     """
     Placeholder secure sum: simply sum the seeds.
@@ -23,7 +37,8 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
 
         self.global_exclusion = []
         self.lr_data = {}
-    
+        self.participants_per_stage = {}
+
     def current_stage_config(self):
         return {"stage": self.current_stage}
 
@@ -50,6 +65,22 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             return {}
 
     def aggregate_fit(self, rnd: int, results, failures):
+        # Record participants for this stage
+        self.participants_per_stage[self.current_stage] = set(cid for cid, _ in results)
+
+        # Enforce prerequisite participation: only keep clients who were in the prereq stage
+        prereq = PREREQ_STAGE.get(self.current_stage)
+        if prereq is not None:
+            allowed = self.participants_per_stage.get(prereq, set())
+            # Filter results to only those client IDs
+            filtered_results = []
+            for cid, fit_res in results:
+                if cid in allowed:
+                    filtered_results.append((cid, fit_res))
+                else:
+                    self.logger.info(f"Skipping client {cid} in stage '{self.current_stage}' because they did not participate in '{prereq}'")
+            results = filtered_results
+
         if self.current_stage == "sync":
             local_seeds = []
             for _, fit_res in results:

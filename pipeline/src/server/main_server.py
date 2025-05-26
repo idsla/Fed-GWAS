@@ -11,8 +11,12 @@ def main():
     fl.server.start_server(
         server_address="127.0.0.1:8080",
         strategy=strategy,
-        #config={"num_rounds": 50},  # or however many max rounds you allow
-        config=ServerConfig(num_rounds=50),
+        config=ServerConfig(
+            num_rounds=50,
+            min_fit_clients=1,
+            min_available_clients=1,
+            min_eval_clients=0,
+        ),
     )
 
 if __name__ == "__main__":
