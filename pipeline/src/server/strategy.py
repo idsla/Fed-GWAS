@@ -7,6 +7,7 @@ from .aggregator_qc import aggregate_global_qc
 from .aggregator_king import run_server_king
 from .aggregator_lr import run_server_lr, merge_insign_snp_sets
 from flwr.common import parameters_to_ndarrays
+import logging
 
 # Define which stage must precede each stage for client participation
 PREREQ_STAGE = {
@@ -29,8 +30,26 @@ def secure_sum(seeds):
     return int(sum(seeds) % (10**9))
 
 class FederatedGWASStrategy(fl.server.strategy.FedAvg):
-    def __init__(self):
-        super().__init__()
+    def __init__(
+        self,
+        min_fit_clients=1,
+        min_available_clients=2,
+        **kwargs
+    ):
+        super().__init__(
+            min_fit_clients=min_fit_clients,
+            min_available_clients=min_available_clients,
+            **kwargs
+        )
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            
         self.global_seed = 0
         self.current_stage = "sync"
         self.chunk_size = 1000
