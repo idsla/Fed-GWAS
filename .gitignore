@@ -51,3 +51,4 @@ README-task-manager.md
 .env.example
 /scripts/
 .cursor/*
+pipeline/.prd/*
