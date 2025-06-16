@@ -24,14 +24,6 @@ PREREQ_STAGE = {
     "sync": "key_exchange",
 }
 
-def secure_sum(seeds, num_clients=None):
-    """
-    Secure sum using custom secure aggregation.
-    """
-    if not seeds:
-        return 0
-    aggregator = create_secure_aggregator(num_clients or len(seeds))
-    return aggregator.secure_sum_seeds(seeds)
 
 class FederatedGWASStrategy(fl.server.strategy.FedAvg):
     def __init__(self, num_clients: int = 3):
