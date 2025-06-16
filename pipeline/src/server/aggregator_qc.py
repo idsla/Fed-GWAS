@@ -5,12 +5,18 @@ from scipy.stats import chi2
 
 def secure_sum_arrays(arrays):
     """
-    Placeholder for a secure sum aggregator.
-    Currently performs a plain sum.
+    Secure sum aggregator using PRG-MASKING.
+    Arrays are already masked by clients, so simple summation works.
     """
+    if not arrays:
+        return np.array([])
+    
+    # Simple summation - masks cancel out automatically
     total = np.zeros_like(arrays[0])
     for arr in arrays:
         total += arr
+    
+    print(f"[Server] PRG-MASKING array aggregation: {len(arrays)} arrays of shape {arrays[0].shape}")
     return total
 
 def aggregate_global_qc(server_strategy, partial_data, config):

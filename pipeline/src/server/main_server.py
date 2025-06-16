@@ -5,8 +5,9 @@ from .strategy import FederatedGWASStrategy
 from flwr.server import ServerConfig
 
 def main():
-    strategy = FederatedGWASStrategy()
-    strategy.on_fit_config_fn = lambda rnd: strategy.current_stage_config()
+    num_clients = 3  # Configure expected number of clients
+    strategy = FederatedGWASStrategy(num_clients=num_clients)
+    strategy.on_fit_config_fn = lambda rnd: strategy.on_fit_config_fn(rnd)
 
     fl.server.start_server(
         server_address="127.0.0.1:8080",
