@@ -3,6 +3,7 @@ import numpy as np
 import sys
 
 class CustomFedAvg(fl.server.strategy.FedAvg):
+    
     def __init__(self, num_rounds: int, *args, **kwargs):
         """
         Custom strategy that extends Flower's FedAvg to aggregate kinship matrices
