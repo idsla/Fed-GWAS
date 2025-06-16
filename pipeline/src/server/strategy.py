@@ -46,20 +46,39 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
     def on_fit_config_fn(self, rnd: int):
         config = {"stage": self.current_stage}
         
+        ################################################################################
+        # Stage 1: Key Exchange - Exchange Diffie-Hellman public keys for secure aggregation
+        ################################################################################
         if self.current_stage == "key_exchange":
             # Provide DH parameters for key exchange
             config.update(self.prg_aggregator.get_dh_params())
+        
+        ################################################################################
+        # Stage 2: Sync - Distribute all public keys and synchronize global random seed
+        ################################################################################
         elif self.current_stage == "sync":
             # Provide all public keys for secure aggregation
             if self.prg_aggregator.is_key_exchange_complete():
                 config["all_public_keys"] = self.prg_aggregator.get_all_public_keys()
             else:
                 config = {"stage": "key_exchange"}  # Fallback to key exchange
+        
+        ################################################################################
+        # Stage 3: Global QC - Quality control data collection with secure aggregation
+        ################################################################################
         elif self.current_stage == "global_qc":
             # Provide public keys for QC data masking
             config["all_public_keys"] = self.prg_aggregator.get_all_public_keys()
+        
+        ################################################################################
+        # Stage 4: Init Chunks (KING) - Initialize chunking for KING relationship analysis
+        ################################################################################
         elif self.current_stage == "init_chunks":
             config["chunk_size"] = self.chunk_size
+        
+        ################################################################################
+        # Stage 5: Init Chunks (LR) - Initialize chunking for logistic regression analysis
+        ################################################################################
         elif self.current_stage == "init_chunks_lr":
             config["chunk_size"] = self.chunk_size
             
@@ -83,6 +102,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
                     self.logger.info(f"Skipping client {cid} in stage '{self.current_stage}' because they did not participate in '{prereq}'")
             results = filtered_results
 
+        ################################################################################
+        # Stage 1: Key Exchange - Collect DH public keys from all clients
+        ################################################################################
         if self.current_stage == "key_exchange":
             # Collect public keys from clients
             print(f"[Server] Collecting public keys from {len(results)} clients...")
@@ -102,6 +124,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             
             return [], {}
 
+        ################################################################################
+        # Stage 2: Sync - Aggregate masked local seeds to create global random seed
+        ################################################################################
         elif self.current_stage == "sync":
             # Collect masked local seeds from clients
             masked_seeds = []
@@ -117,6 +142,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             self.current_stage = "global_qc"
             return [], {}
 
+        ################################################################################
+        # Stage 3: Global QC - Aggregate masked QC statistics and determine SNP exclusions
+        ################################################################################
         elif self.current_stage == "global_qc":
             # Collect masked QC data from clients
             masked_data = []
@@ -140,6 +168,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             print(f"[Server] PRG-MASKING QC aggregation: {len(masked_data)} clients -> {len(excl_set)} SNPs excluded")
             return [], {}
 
+        ################################################################################
+        # Stage 4: Global QC Response - Send exclusion list back to clients
+        ################################################################################
         elif self.current_stage == "global_qc_response":
             if self.global_exclusion:
                 excl_str = "\n".join(str(i) for i in self.global_exclusion)
@@ -150,11 +181,17 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
                 self.current_stage = "init_chunks"
                 return [], {}
 
+        ################################################################################
+        # Stage 5: Init Chunks (KING) - Send global seed for KING analysis chunking
+        ################################################################################
         elif self.current_stage == "init_chunks":
             global_seed_np = np.array([self.global_seed], dtype=np.int64)
             self.current_stage = "iterative_king"
             return [global_seed_np], {}
 
+        ################################################################################
+        # Stage 6: Iterative KING - Process KING relationship analysis results
+        ################################################################################
         elif self.current_stage == "iterative_king":
             for _, fit_res in results:
                 if fit_res.parameters:
@@ -162,6 +199,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             self.current_stage = "local_lr"
             return [], {}
 
+        ################################################################################
+        # Stage 7: Local LR - Collect insignificant SNP sets from logistic regression
+        ################################################################################
         elif self.current_stage == "local_lr":
             all_sets = []
             for _, fit_res in results:
@@ -178,15 +218,24 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
                 self.current_stage = "init_chunks_lr"
                 return [], {}
 
+        ################################################################################
+        # Stage 8: Local LR Filter Response - Acknowledge receipt of filtered SNP set
+        ################################################################################
         elif self.current_stage == "local_lr_filter_response":
             self.current_stage = "init_chunks_lr"
             return [], {}
 
+        ################################################################################
+        # Stage 9: Init Chunks (LR) - Send global seed for LR analysis chunking
+        ################################################################################
         elif self.current_stage == "init_chunks_lr":
             global_seed_np = np.array([self.global_seed], dtype=np.int64)
             self.current_stage = "iterative_lr"
             return [global_seed_np], {}
 
+        ################################################################################
+        # Stage 10: Iterative LR - Process final logistic regression analysis results
+        ################################################################################
         elif self.current_stage == "iterative_lr":
             for _, fit_res in results:
                 if fit_res.parameters:

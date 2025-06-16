@@ -63,7 +63,9 @@ class FedLRClient(BaseGWASClient):
             client_id = int(self.client_id.split('_')[1]) if '_' in self.client_id else 0
             self.masking_helper = create_client_masking_helper(client_id, self.num_clients)
 
-        # 0) key_exchange: DH key exchange for PRG-MASKING
+        ################################################################################
+        # Stage 1: Key Exchange - Generate and send DH public key for secure aggregation
+        ################################################################################
         if stage == "key_exchange":
             logging.info(f"[Client {self.client_id}] Stage: key_exchange")
             dh_params = {k: v for k, v in config.items() if k.startswith("dh_")}
@@ -76,7 +78,9 @@ class FedLRClient(BaseGWASClient):
             logging.info(f"[Client {self.client_id}] Generated DH public key")
             return [public_key_array], 1, {"message": "public_key_sent"}
 
-        # 1) local_qc: Filter samples by per-sample missing rate
+        ################################################################################
+        # Stage 2: Local QC - Filter samples by per-sample missing rate threshold
+        ################################################################################
         if stage == "local_qc":
             local_mind_threshold = config.get("local_mind_threshold", 0.1)
             logging.info(f"[Client {self.client_id}] Stage: local_qc (mind={local_mind_threshold})")
@@ -86,7 +90,9 @@ class FedLRClient(BaseGWASClient):
             logging.info(f"[Client {self.client_id}] Local QC done => new prefix {self.plink_prefix}")
             return [], 1, {}
 
-        # 2) global_qc: compute MAF, HWE, and per-SNP missingness with PRG-MASKING
+        ################################################################################
+        # Stage 3: Global QC - Compute and send masked MAF, HWE, and missingness statistics
+        ################################################################################
         elif stage == "global_qc":
             logging.info(f"[Client {self.client_id}] Stage: global_qc with PRG-MASKING")
             
@@ -118,7 +124,9 @@ class FedLRClient(BaseGWASClient):
                 logging.warning(f"[Client {self.client_id}] No public keys available, sending unmasked data")
                 return [counts_array, missing_array, threshold_array], 1, {}
 
-        # 3) global_qc_response: server returns SNPs or samples to exclude globally
+        ################################################################################
+        # Stage 4: Global QC Response - Receive and apply global SNP exclusion list
+        ################################################################################
         elif stage == "global_qc_response":
             if len(parameters) > 0:
                 excluded_data = parameters[0].tobytes().decode("utf-8").split()
@@ -128,7 +136,9 @@ class FedLRClient(BaseGWASClient):
                 logging.info(f"[Client {self.client_id}] Global QC filter => new prefix {self.plink_prefix}")
             return [], 1, {}
 
-        # 4) sync: combine seeds → self.global_seed using PRG-MASKING
+        ################################################################################
+        # Stage 5: Sync - Send masked local seed for global random seed generation
+        ################################################################################
         elif stage == "sync":
             logging.info(f"[Client {self.client_id}] Stage: sync with PRG-MASKING")
             # Get all public keys and compute shared secrets
@@ -149,8 +159,11 @@ class FedLRClient(BaseGWASClient):
             logging.info(f"[Client {self.client_id}] Original seed: {self.local_seed}, Masked: {masked_seed}")
             return [seed_array], 1, {}
 
-        # 5) init_chunks: partition data for iterative KING
+        ################################################################################
+        # Stage 6: Init Chunks (KING) - Receive global seed and partition data for KING analysis
+        ################################################################################
         elif stage == "init_chunks":
+            
             if len(parameters) > 0:
                 self.global_seed = int(parameters[0][0])
             self.partition_data(config)
@@ -158,24 +171,30 @@ class FedLRClient(BaseGWASClient):
             logging.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative KING.")
             return [], 1, {}
 
-        # 6) iterative_king: filter out highly related samples
+        ################################################################################
+        # Stage 7: Iterative KING - Process KING relationship analysis chunk by chunk
+        ################################################################################
         elif stage == "iterative_king":
             return handle_iterative_king(self, parameters, config)
 
-        # 7) local_lr: run local LR to detect insignificant SNPs
+        ################################################################################
+        # Stage 8: Local LR - Run local logistic regression and identify insignificant SNPs
+        ################################################################################
         elif stage == "local_lr":
             logging.info(f"[Client {self.client_id}] Stage: local_lr")
             p_threshold = config.get("p_threshold", 1e-3)
             assoc_file = run_local_lr(self.plink_prefix, out_prefix="local_lr_temp")
             insign_snps = parse_insignificant_snps(assoc_file, p_threshold=p_threshold)
-            # Send these ‘insignificant’ SNPs to the server
+            # Send these 'insignificant' SNPs to the server
             joined = "\n".join(insign_snps)
             data_bytes = joined.encode("utf-8")
             data_array = np.frombuffer(data_bytes, dtype=np.uint8)
             logging.info(f"[Client {self.client_id}] Found {len(insign_snps)} insign. SNPs locally")
             return [data_array], 1, {}
 
-        # 8) local_lr_filter_response: server intersection => exclude SNPs locally
+        ################################################################################
+        # Stage 9: Local LR Filter Response - Receive and apply intersection of insignificant SNPs
+        ################################################################################
         elif stage == "local_lr_filter_response":
             if len(parameters) > 0:
                 intersection_str = parameters[0].tobytes().decode("utf-8")
@@ -186,14 +205,18 @@ class FedLRClient(BaseGWASClient):
                     self.plink_prefix = new_prefix
             return [], 1, {}
 
-        # 9) init_chunks_lr: partition data for iterative LR
+        ################################################################################
+        # Stage 10: Init Chunks (LR) - Partition filtered data for final LR analysis
+        ################################################################################
         elif stage == "init_chunks_lr":
             self.partition_data(config)
             self.current_chunk_idx = 0
             logging.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative LR.")
             return [], 1, {}
 
-        # 10) iterative_lr: iterative logistic regression stage
+        ################################################################################
+        # Stage 11: Iterative LR - Process final logistic regression analysis chunk by chunk
+        ################################################################################
         elif stage == "iterative_lr":
             return handle_iterative_lr(self, parameters, config)
 
