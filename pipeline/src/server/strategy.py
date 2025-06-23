@@ -8,6 +8,7 @@ from .aggregator_king import run_server_king
 from .aggregator_lr import run_server_lr, merge_insign_snp_sets
 from .prg_masking import create_prg_masking_aggregator
 from flwr.common import parameters_to_ndarrays
+import logging
 
 # Define which stage must precede each stage for client participation
 PREREQ_STAGE = {
@@ -26,19 +27,37 @@ PREREQ_STAGE = {
 
 
 class FederatedGWASStrategy(fl.server.strategy.FedAvg):
-    def __init__(self, num_clients: int = 3):
-        super().__init__()
+    def __init__(
+        self,
+        min_fit_clients=1,
+        min_available_clients=2,
+        **kwargs
+    ):
+        super().__init__(
+            min_fit_clients=min_fit_clients,
+            min_available_clients=min_available_clients,
+            **kwargs
+        )
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            
         self.global_seed = 0
         self.current_stage = "key_exchange"  # Start with key exchange
         self.chunk_size = 1000
-        self.num_clients = num_clients
+        self.num_clients = 3   # TODO: need to check with Sonam for how to specify this parameter
 
         self.global_exclusion = []
         self.lr_data = {}
         self.participants_per_stage = {}
         
         # PRG-MASKING aggregator
-        self.prg_aggregator = create_prg_masking_aggregator(num_clients)
+        self.prg_aggregator = create_prg_masking_aggregator(self.num_clients)
 
     def current_stage_config(self):
         return {"stage": self.current_stage}

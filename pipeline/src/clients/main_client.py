@@ -22,14 +22,18 @@ from local_qc import (
 from iterative_king import handle_iterative_king
 from iterative_lr import handle_iterative_lr
 from data_loder import DataLoader
-
+import os
+import uuid
 class FedLRClient(BaseGWASClient):
     def __init__(self, config_file="config.yaml", partition_by="samples"):
         # Use DataLoader to load configuration and transform data if necessary
         loader = DataLoader(config_file)
         # transform_data() returns the PLINK dataset prefix (e.g., "data/client_data")
         plink_prefix = loader.transform_data()
-        super().__init__(plink_prefix, client_id="client_1", partition_by=partition_by)
+        client_id = f"client_{uuid.uuid4().hex[:6]}"
+        super().__init__(plink_prefix, client_id=client_id, partition_by=partition_by)
+
+       # super().__init__(plink_prefix, client_id="client_1", partition_by=partition_by)
         # Overwrite thresholds from config loaded via DataLoader
         thresholds = loader.get_thresholds()
         self.maf_threshold = thresholds.get("maf_threshold", 0.01)
