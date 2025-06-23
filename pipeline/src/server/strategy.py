@@ -3,10 +3,10 @@
 import numpy as np
 import flwr as fl
 
-from .aggregator_qc import aggregate_global_qc
-from .aggregator_king import run_server_king
-from .aggregator_lr import run_server_lr, merge_insign_snp_sets
-from .prg_masking import create_prg_masking_aggregator
+from aggregator_qc import aggregate_global_qc
+from aggregator_king import run_server_king
+from aggregator_lr import run_server_lr, merge_insign_snp_sets
+from prg_masking import create_prg_masking_aggregator
 from flwr.common import parameters_to_ndarrays
 import logging
 
@@ -63,22 +63,24 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         return {"stage": self.current_stage}
 
     def on_fit_config_fn(self, rnd: int):
+        
         config = {"stage": self.current_stage}
         
         ################################################################################
         # Stage 1: Key Exchange - Exchange Diffie-Hellman public keys for secure aggregation
         ################################################################################
         if self.current_stage == "key_exchange":
-            # Provide DH parameters for key exchange
-            config.update(self.prg_aggregator.get_dh_params())
+            # Provide curve parameters for key exchange
+            config.update(self.prg_aggregator.get_curve_params())
         
         ################################################################################
-        # Stage 2: Sync - Distribute all public keys and synchronize global random seed
+        # Stage 2: Sync - Distribute all public keys
         ################################################################################
         elif self.current_stage == "sync":
-            # Provide all public keys for secure aggregation
+            # Provide all public keys and curve for secure aggregation
             if self.prg_aggregator.is_key_exchange_complete():
                 config["all_public_keys"] = self.prg_aggregator.get_all_public_keys()
+                config.update(self.prg_aggregator.get_curve_params())
             else:
                 config = {"stage": "key_exchange"}  # Fallback to key exchange
         
@@ -86,20 +88,54 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         # Stage 3: Global QC - Quality control data collection with secure aggregation
         ################################################################################
         elif self.current_stage == "global_qc":
-            # Provide public keys for QC data masking
+            # Provide public keys and curve for QC data masking
             config["all_public_keys"] = self.prg_aggregator.get_all_public_keys()
+            config.update(self.prg_aggregator.get_curve_params())
         
         ################################################################################
-        # Stage 4: Init Chunks (KING) - Initialize chunking for KING relationship analysis
+        # Stage 4: Global QC Response - Send exclusion lists back to clients
+        ################################################################################
+        elif self.current_stage == "global_qc_response":
+            config = {"stage": "global_qc_response"}
+        
+        ################################################################################
+        # Stage 5: Init Chunks (KING) - Initialize chunking for KING relationship analysis
         ################################################################################
         elif self.current_stage == "init_chunks":
             config["chunk_size"] = self.chunk_size
         
         ################################################################################
-        # Stage 5: Init Chunks (LR) - Initialize chunking for logistic regression analysis
+        # Stage 6: Iterative KING - Process KING relationship analysis chunks
+        ################################################################################
+        elif self.current_stage == "iterative_king":
+            config = {"stage": "iterative_king"}
+        
+        ################################################################################
+        # Stage 7: Local LR - Collect local logistic regression results
+        ################################################################################
+        elif self.current_stage == "local_lr":
+            config = {"stage": "local_lr"}
+        
+        ################################################################################
+        # Stage 8: Local LR Filter Response - Send filtered SNP lists back to clients
+        ################################################################################
+        elif self.current_stage == "local_lr_filter_response":
+            config = {"stage": "local_lr_filter_response"}
+        
+        ################################################################################
+        # Stage 9: Init Chunks (LR) - Initialize chunking for logistic regression analysis
         ################################################################################
         elif self.current_stage == "init_chunks_lr":
             config["chunk_size"] = self.chunk_size
+        
+        ################################################################################
+        # Stage 10: Iterative LR - Process logistic regression analysis chunks
+        ################################################################################
+        elif self.current_stage == "iterative_lr":
+            config = {"stage": "iterative_lr"}
+        
+        else:
+            config = {}
             
         return config
 
@@ -110,6 +146,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
 
         # Enforce prerequisite participation: only keep clients who were in the prereq stage
         prereq = PREREQ_STAGE.get(self.current_stage)
+        
         if prereq is not None:
             allowed = self.participants_per_stage.get(prereq, set())
             # Filter results to only those client IDs
@@ -125,11 +162,13 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         # Stage 1: Key Exchange - Collect DH public keys from all clients
         ################################################################################
         if self.current_stage == "key_exchange":
+            
             # Collect public keys from clients
             print(f"[Server] Collecting public keys from {len(results)} clients...")
             for cid, fit_res in results:
                 if fit_res.parameters:
                     ndarrays = parameters_to_ndarrays(fit_res.parameters)
+                    
                     # Public key is sent as uint8 array, convert back to string
                     public_key_bytes = ndarrays[0].tobytes()
                     public_key_str = public_key_bytes.decode('utf-8')
@@ -147,6 +186,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         # Stage 2: Sync - Aggregate masked local seeds to create global random seed
         ################################################################################
         elif self.current_stage == "sync":
+            
             # Collect masked local seeds from clients
             masked_seeds = []
             for _, fit_res in results:
@@ -204,6 +244,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         # Stage 5: Init Chunks (KING) - Send global seed for KING analysis chunking
         ################################################################################
         elif self.current_stage == "init_chunks":
+            
             global_seed_np = np.array([self.global_seed], dtype=np.int64)
             self.current_stage = "iterative_king"
             return [global_seed_np], {}

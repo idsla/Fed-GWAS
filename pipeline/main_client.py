@@ -9,9 +9,9 @@ import os
 # Add parent directory to path for server imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from base_client import BaseGWASClient
-from server.prg_masking import create_client_masking_helper
-from local_qc import (
+from src.clients.base_client import BaseGWASClient
+from src.server.prg_masking import create_client_masking_helper
+from src.clients.local_qc import (
     compute_genotype_counts,
     compute_missingness_counts,
     run_local_lr,
@@ -19,11 +19,12 @@ from local_qc import (
     exclude_snps,
     exclude_samples_by_missing_rate,
 )
-from iterative_king import handle_iterative_king
-from iterative_lr import handle_iterative_lr
-from data_loder import DataLoader
+from src.clients.iterative_king import handle_iterative_king
+from src.clients.iterative_lr import handle_iterative_lr
+from src.clients.data_loder import DataLoader
 import os
 import uuid
+
 class FedLRClient(BaseGWASClient):
     def __init__(self, config_file="config.yaml", partition_by="samples"):
         # Use DataLoader to load configuration and transform data if necessary
@@ -56,7 +57,9 @@ class FedLRClient(BaseGWASClient):
         self.num_clients = 3  # Default, should be configured
 
     def fit(self, parameters, config):
-        stage = config.get("stage", "sync")
+        
+        stage = config.get("stage", "key_exchange")
+        
         # Exit process if this client opts out of the current stage
         if not self.participation.get(stage, True):
             logging.info(f"[Client {self.client_id}] Exiting: not participating in stage '{stage}'")
@@ -72,20 +75,46 @@ class FedLRClient(BaseGWASClient):
         ################################################################################
         if stage == "key_exchange":
             logging.info(f"[Client {self.client_id}] Stage: key_exchange")
-            dh_params = {k: v for k, v in config.items() if k.startswith("dh_")}
-            public_key_str = self.masking_helper.generate_dh_keypair(dh_params)
+            curve_params = {k: v for k, v in config.items() if k == "curve"}
+            public_key_pem = self.masking_helper.generate_ecc_keypair(curve_params)
             
-            # Convert string to bytes and then to uint8 array for transmission
-            public_key_bytes = public_key_str.encode('utf-8')
+            # Convert PEM string to bytes and then to uint8 array for transmission
+            public_key_bytes = public_key_pem.encode('utf-8')
             public_key_array = np.frombuffer(public_key_bytes, dtype=np.uint8)
             
             logging.info(f"[Client {self.client_id}] Generated DH public key")
             return [public_key_array], 1, {"message": "public_key_sent"}
+        
+        ################################################################################
+        # Stage 2: Sync - Send masked local seed for global random seed generation
+        ################################################################################
+        elif stage == "sync":
+            
+            logging.info(f"[Client {self.client_id}] Stage: sync with PRG-MASKING")
+            
+            # Get all public keys and compute shared secrets
+            all_public_keys = config.get("all_public_keys", {})
+            curve_params = {k: v for k, v in config.items() if k == "curve"}
+            
+            if not curve_params and "curve" not in config:
+                # Extract curve params from the strategy (they should be in config)
+                logging.warning(f"[Client {self.client_id}] Missing curve params in sync stage")
+                return [np.array([self.local_seed], dtype=np.float64)], 1, {}
+            
+            self.masking_helper.compute_shared_secrets(all_public_keys, curve_params or config)
+            
+            # Apply PRG masking to local seed
+            masked_seed = self.masking_helper.mask_data(self.local_seed)
+            seed_array = np.array([masked_seed], dtype=np.float64)
+            
+            logging.info(f"[Client {self.client_id}] Original seed: {self.local_seed}, Masked: {masked_seed}")
+            return [seed_array], 1, {}
 
         ################################################################################
-        # Stage 2: Local QC - Filter samples by per-sample missing rate threshold
+        # Stage 3: Local QC - Filter samples by per-sample missing rate threshold
         ################################################################################
         if stage == "local_qc":
+            
             local_mind_threshold = config.get("local_mind_threshold", 0.1)
             logging.info(f"[Client {self.client_id}] Stage: local_qc (mind={local_mind_threshold})")
             # Exclude samples with missing rate > local_mind_threshold
@@ -95,17 +124,18 @@ class FedLRClient(BaseGWASClient):
             return [], 1, {}
 
         ################################################################################
-        # Stage 3: Global QC - Compute and send masked MAF, HWE, and missingness statistics
+        # Stage 4: Global QC - Compute and send masked MAF, HWE, and missingness statistics
         ################################################################################
         elif stage == "global_qc":
+            
             logging.info(f"[Client {self.client_id}] Stage: global_qc with PRG-MASKING")
             
             # Get all public keys and compute shared secrets
             all_public_keys = config.get("all_public_keys", {})
-            dh_params = {k: v for k, v in config.items() if k.startswith("dh_")}
+            curve_params = {k: v for k, v in config.items() if k == "curve"}
             
             if all_public_keys:
-                self.masking_helper.compute_shared_secrets(all_public_keys, dh_params or config)
+                self.masking_helper.compute_shared_secrets(all_public_keys, curve_params or config)
             
             # Compute local QC arrays
             counts_array = compute_genotype_counts(self.plink_prefix, self.client_id)
@@ -129,39 +159,19 @@ class FedLRClient(BaseGWASClient):
                 return [counts_array, missing_array, threshold_array], 1, {}
 
         ################################################################################
-        # Stage 4: Global QC Response - Receive and apply global SNP exclusion list
+        # Stage 5: Global QC Response - Receive and apply global SNP exclusion list
         ################################################################################
         elif stage == "global_qc_response":
+            
             if len(parameters) > 0:
                 excluded_data = parameters[0].tobytes().decode("utf-8").split()
+                
                 # Suppose these are SNP IDs to drop; exclude them from local dataset
                 new_prefix = exclude_snps(self.plink_prefix, excluded_data, "global_filtered")
                 self.plink_prefix = new_prefix
                 logging.info(f"[Client {self.client_id}] Global QC filter => new prefix {self.plink_prefix}")
+            
             return [], 1, {}
-
-        ################################################################################
-        # Stage 5: Sync - Send masked local seed for global random seed generation
-        ################################################################################
-        elif stage == "sync":
-            logging.info(f"[Client {self.client_id}] Stage: sync with PRG-MASKING")
-            # Get all public keys and compute shared secrets
-            all_public_keys = config.get("all_public_keys", {})
-            dh_params = {k: v for k, v in config.items() if k.startswith("dh_")}
-            
-            if not dh_params and "dh_p" not in config:
-                # Extract DH params from the strategy (they should be in config)
-                logging.warning(f"[Client {self.client_id}] Missing DH params in sync stage")
-                return [np.array([self.local_seed], dtype=np.float64)], 1, {}
-            
-            self.masking_helper.compute_shared_secrets(all_public_keys, dh_params or config)
-            
-            # Apply PRG masking to local seed
-            masked_seed = self.masking_helper.mask_data(self.local_seed)
-            seed_array = np.array([masked_seed], dtype=np.float64)
-            
-            logging.info(f"[Client {self.client_id}] Original seed: {self.local_seed}, Masked: {masked_seed}")
-            return [seed_array], 1, {}
 
         ################################################################################
         # Stage 6: Init Chunks (KING) - Receive global seed and partition data for KING analysis
@@ -170,6 +180,7 @@ class FedLRClient(BaseGWASClient):
             
             if len(parameters) > 0:
                 self.global_seed = int(parameters[0][0])
+            
             self.partition_data(config)
             self.current_chunk_idx = 0
             logging.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative KING.")

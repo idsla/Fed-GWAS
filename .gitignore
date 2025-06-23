@@ -53,3 +53,4 @@ README-task-manager.md
 .cursor/*
 pipeline/prd/*
 pipeline/.claude/*
+pipeline/.venv/*
