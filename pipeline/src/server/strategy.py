@@ -8,6 +8,7 @@ from .aggregator_king import run_server_king
 from .aggregator_lr import run_server_lr, merge_insign_snp_sets
 from flwr.common import parameters_to_ndarrays
 import logging
+from flwr.common import ndarrays_to_parameters
 
 # Define which stage must precede each stage for client participation
 PREREQ_STAGE = {
@@ -62,6 +63,8 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         return {"stage": self.current_stage}
 
     def on_fit_config_fn(self, rnd: int):
+        print(f">>>>>>> Sending config for stage: {self.current_stage}")
+
         if self.current_stage == "sync":
             return {"stage": "sync"}
         elif self.current_stage == "global_qc":
@@ -84,6 +87,8 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             return {}
 
     def aggregate_fit(self, rnd: int, results, failures):
+        if failures:
+            self.logger.warning(f"Received failures from clients: {failures}")
         # Record participants for this stage
         self.participants_per_stage[self.current_stage] = set(cid for cid, _ in results)
 
@@ -100,6 +105,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
                     self.logger.info(f"Skipping client {cid} in stage '{self.current_stage}' because they did not participate in '{prereq}'")
             results = filtered_results
 
+        print(f">>>>>>>Server now transitioning to stage: {self.current_stage}")
         if self.current_stage == "sync":
             local_seeds = []
             for _, fit_res in results:
@@ -137,42 +143,62 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             return [], {}
 
         elif self.current_stage == "global_qc_response":
-            if self.global_exclusion:
-                excl_str = "\n".join(str(i) for i in self.global_exclusion)
-                arr = np.frombuffer(excl_str.encode("utf-8"), dtype=np.uint8)
-                self.current_stage = "init_chunks"
-                return [arr], {}
-            else:
-                self.current_stage = "init_chunks"
+            try:
+                if self.global_exclusion:
+                    excl_str = "\n".join(str(i) for i in self.global_exclusion)
+                    arr = np.frombuffer(excl_str.encode("utf-8"), dtype=np.uint8)   
+                    params = ndarrays_to_parameters([arr])
+                    self.current_stage = "init_chunks"
+                    return params, {}
+                else:
+                    self.current_stage = "init_chunks"
+                    return [], {}
+            except Exception as e:
+                self.logger.error(f"Error preparing global_qc_response parameters: {e}")
                 return [], {}
-
+            
         elif self.current_stage == "init_chunks":
-            global_seed_np = np.array([self.global_seed], dtype=np.int64)
-            self.current_stage = "iterative_king"
-            return [global_seed_np], {}
+            try:
+                global_seed_np = np.array([self.global_seed], dtype=np.int64)
+                params = ndarrays_to_parameters([global_seed_np])
+                self.current_stage = "iterative_king"
+                return params, {}
+            except Exception as e:
+                self.logger.error(f"Error preparing init_chunks parameters: {e}")
+                return [], {}
 
         elif self.current_stage == "iterative_king":
-            for _, fit_res in results:
-                if fit_res.parameters:
-                    run_server_king(self, fit_res.parameters)
-            self.current_stage = "local_lr"
-            return [], {}
+            try:
+                for _, fit_res in results:
+                    if fit_res.parameters:
+                        run_server_king(self, fit_res.parameters)
+                self.current_stage = "local_lr"
+                return [], {}
+            except Exception as e:
+                self.logger.error(f"Error in iterative_king: {e}")
+                return [], {}
 
         elif self.current_stage == "local_lr":
-            all_sets = []
-            for _, fit_res in results:
-                if fit_res.parameters:
-                    data_bytes = fit_res.parameters[0].numpy.tobytes()
-                    snp_set = set(data_bytes.decode("utf-8").split())
-                    all_sets.append(snp_set)
-            intersection = merge_insign_snp_sets(all_sets)
-            if intersection:
-                arr = np.frombuffer("\n".join(sorted(intersection)).encode("utf-8"), dtype=np.uint8)
-                self.current_stage = "local_lr_filter_response"
-                return [arr], {}
-            else:
-                self.current_stage = "init_chunks_lr"
-                return [], {}
+            try:
+                all_sets = []
+                for _, fit_res in results:
+                    if fit_res.parameters:
+                        ndarrays = parameters_to_ndarrays(fit_res.parameters)
+                        data_bytes = ndarrays[0].tobytes()
+                        snp_set = set(data_bytes.decode("utf-8").split())
+                        all_sets.append(snp_set)
+                intersection = merge_insign_snp_sets(all_sets)
+                if intersection:
+                    arr = np.frombuffer("\n".join(sorted(intersection)).encode("utf-8"), dtype=np.uint8)
+                    self.current_stage = "local_lr_filter_response"
+                    params = ndarrays_to_parameters([arr])
+                    return params, {}
+                else:
+                    self.current_stage = "init_chunks_lr"
+                    return [], {}
+            except Exception as e:
+                self.logger.error(f"Error in local_lr: {e}")
+                return [], {}    
 
         elif self.current_stage == "local_lr_filter_response":
             self.current_stage = "init_chunks_lr"
@@ -181,7 +207,8 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         elif self.current_stage == "init_chunks_lr":
             global_seed_np = np.array([self.global_seed], dtype=np.int64)
             self.current_stage = "iterative_lr"
-            return [global_seed_np], {}
+            params = ndarrays_to_parameters([global_seed_np])
+            return params, {}
 
         elif self.current_stage == "iterative_lr":
             for _, fit_res in results:

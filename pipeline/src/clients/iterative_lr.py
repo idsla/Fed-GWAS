@@ -55,40 +55,42 @@ def handle_iterative_lr(client, parameters, config):
 
     # If server returned p-values, parse them and store
     if parameters and len(parameters) > 0:
-        # e.g., each line: "anonSNPID p_value"
-        lr_results_str = parameters[0].tobytes().decode("utf-8").strip()
-        lines = lr_results_str.splitlines()
-        logging.info(f"[Client {client.client_id}] Received {len(lines)} partial LR p-values from server.")
+        try:
+            # e.g., each line: "anonSNPID p_value"
+            lr_results_str = parameters[0].tobytes().decode("utf-8").strip()
+            lines = lr_results_str.splitlines()
+            logging.info(f"[Client {client.client_id}] Received {len(lines)} partial LR p-values from server.")
 
-        # let us find the local id map for 'chunk_index'
-        # chunk_snp_map[chunk_index][anonSNP] -> realSNP
-        # For example: client.chunk_snp_map[chunk_index][anon_id] = old_id
+            # let us find the local id map for 'chunk_index'
+            # chunk_snp_map[chunk_index][anonSNP] -> realSNP
+            # For example: client.chunk_snp_map[chunk_index][anon_id] = old_id
 
-        for line in lines:
-            parts = line.strip().split()
-            if len(parts) < 2:
-                continue
-            anon_snp_id, pval_str = parts[0], parts[1]
-            pval = float(pval_str)
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) < 2:
+                    continue
+                anon_snp_id, pval_str = parts[0], parts[1]
+                pval = float(pval_str)
 
-            # Convert anon_snp_id -> real_snp_id if we have a mapping
-            if chunk_index in client.chunk_snp_map:
-                local_map = client.chunk_snp_map[chunk_index]
-                real_snp_id = local_map.get(anon_snp_id, anon_snp_id)
-            else:
-                # If no mapping, we store as-is (less ideal if we need real ID)
-                real_snp_id = anon_snp_id
+                # Convert anon_snp_id -> real_snp_id if we have a mapping
+                if chunk_index in client.chunk_snp_map:
+                    local_map = client.chunk_snp_map[chunk_index]
+                    real_snp_id = local_map.get(anon_snp_id, anon_snp_id)
+                else:
+                    # If no mapping, we store as-is (less ideal if we need real ID)
+                    real_snp_id = anon_snp_id
 
-            # Accumulate p-values
-            if real_snp_id not in client.lr_pvals:
-                client.lr_pvals[real_snp_id] = []
-            client.lr_pvals[real_snp_id].append(pval)
+                # Accumulate p-values
+                if real_snp_id not in client.lr_pvals:
+                    client.lr_pvals[real_snp_id] = []
+                client.lr_pvals[real_snp_id].append(pval)
 
-            # Example:
-            # client.lr_pvals = {
-            #    "rs12345": [1e-7, 2e-5],
-            #    "rs99999": [0.3, 0.15],
-            #    ...
-            # }
-
+                # Example:
+                # client.lr_pvals = {
+                #    "rs12345": [1e-7, 2e-5],
+                #    "rs99999": [0.3, 0.15],
+                #    ...
+                # }
+        except Exception as e:
+                print(f"Error in Iterative LR records from server parameters: {e}")  
     return [data_array], 1, {}

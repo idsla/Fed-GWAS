@@ -5,7 +5,7 @@ import subprocess
 import tarfile
 import uuid
 import numpy as np
-
+from flwr.common import parameters_to_ndarrays
 
 def run_server_king(server_strategy, parameters_list):
     """
@@ -24,10 +24,10 @@ def run_server_king(server_strategy, parameters_list):
     os.makedirs(session_id, exist_ok=True)
     merged_prefix = f"{session_id}/merged_king"
     bed_files = []
-
+    ndarrays = parameters_to_ndarrays(parameters_list)  # <- Converts Parameters to list of np.ndarrays  
     # Unpack each client's tar file and collect bed file prefixes
-    for param in parameters_list:
-        chunk_bytes = param.numpy.tobytes()
+    for param in ndarrays:
+        chunk_bytes = param.tobytes()  # <- Not `param.numpy.tobytes()`
         tar_path = os.path.join(session_id, f"{uuid.uuid4().hex}.tar")
         with open(tar_path, "wb") as f:
             f.write(chunk_bytes)
@@ -111,10 +111,16 @@ def run_server_king(server_strategy, parameters_list):
         print("[Server KING] No heterozygosity file found; using placeholder for n1.")
 
     # Run PLINK --king robust
+    # king_cmd = [
+    #     "plink",
+    #     "--bfile", merged_prefix,
+    #     "--king", "robust",
+    #     "--out", f"{session_id}/king_results"
+    # ]
     king_cmd = [
         "plink",
         "--bfile", merged_prefix,
-        "--king", "robust",
+        "--genome",
         "--out", f"{session_id}/king_results"
     ]
     try:
@@ -124,7 +130,7 @@ def run_server_king(server_strategy, parameters_list):
         print(f"[Server KING] PLINK KING failed: {e}")
 
     # Parse the king_results file (.kin0)
-    kin0_file = f"{session_id}/king_results.kin0"
+    kin0_file = f"{session_id}/king_results.genome"
     result_str = ""
     if os.path.exists(kin0_file):
         with open(kin0_file, "r") as f:
@@ -137,7 +143,7 @@ def run_server_king(server_strategy, parameters_list):
                 # Column 1: FID1 (anon) ; Column 3: FID2 (anon); Column 5: KING coefficient
                 sampleA = parts[0]
                 sampleB = parts[2]
-                partial_phi = parts[4]
+                partial_phi = parts[9]
                 # Lookup n1 for sampleA using our heterozygosity dictionary
                 n1_star = n1_dict.get(sampleA, 0)  # 0 if not found
                 result_str += f"{sampleA} {sampleB} {partial_phi} {n1_star}\n"

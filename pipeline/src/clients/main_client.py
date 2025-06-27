@@ -48,6 +48,7 @@ class FedLRClient(BaseGWASClient):
 
     def fit(self, parameters, config):
         stage = config.get("stage", "sync")
+        print(">>> Running Current Stage -- " + stage)
         # Exit process if this client opts out of the current stage
         if not self.participation.get(stage, True):
             logging.info(f"[Client {self.client_id}] Exiting: not participating in stage '{stage}'")
@@ -80,12 +81,18 @@ class FedLRClient(BaseGWASClient):
 
         # 3) global_qc_response: server returns SNPs or samples to exclude globally
         elif stage == "global_qc_response":
-            if len(parameters) > 0:
-                excluded_data = parameters[0].tobytes().decode("utf-8").split()
-                # Suppose these are SNP IDs to drop; exclude them from local dataset
-                new_prefix = exclude_snps(self.plink_prefix, excluded_data, "global_filtered")
-                self.plink_prefix = new_prefix
-                logging.info(f"[Client {self.client_id}] Global QC filter => new prefix {self.plink_prefix}")
+            try:
+                if len(parameters) > 0:
+                    excluded_data = parameters[0].tobytes().decode("utf-8").split()
+                    # Suppose these are SNP IDs to drop; exclude them from local dataset
+                    new_prefix = exclude_snps(self.plink_prefix, excluded_data, "global_filtered")
+                    self.plink_prefix = new_prefix
+                    logging.info(f"[Client {self.client_id}] Global QC filter => new prefix {self.plink_prefix}")
+                else:
+                    print(f"[Client {self.client_id}] No parameters received in global_qc_response")
+            except Exception as e:
+                logging.error(f"[Client {self.client_id}] Error in global_qc_response: {e}")
+                raise
             return [], 1, {}
 
         # 4) sync: combine seeds → self.global_seed
@@ -95,11 +102,14 @@ class FedLRClient(BaseGWASClient):
 
         # 5) init_chunks: partition data for iterative KING
         elif stage == "init_chunks":
-            if len(parameters) > 0:
-                self.global_seed = int(parameters[0][0])
-            self.partition_data(config)
-            self.current_chunk_idx = 0
-            logging.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative KING.")
+            try:
+                if len(parameters) > 0:
+                    self.global_seed = int(parameters[0][0])
+                self.partition_data(config)
+                self.current_chunk_idx = 0
+                logging.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative KING.")
+            except Exception as e:
+                print(f"[Client {self.client_id}] Error in init_chunks stage: {e}")
             return [], 1, {}
 
         # 6) iterative_king: filter out highly related samples
@@ -146,7 +156,6 @@ class FedLRClient(BaseGWASClient):
             return [], 1, {}
 
 def main():
-    import flwr as fl
     client = FedLRClient(config_file="config.yaml", partition_by="samples")
     fl.client.start_numpy_client(server_address="127.0.0.1:8080", client=client)
 

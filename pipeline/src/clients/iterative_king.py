@@ -55,33 +55,36 @@ def handle_iterative_king(client, parameters, config):
 
     # If the server returned partial KING results for this chunk
     if parameters and len(parameters) > 0:
-        partial_str = parameters[0].tobytes().decode("utf-8").strip()
-        lines = partial_str.splitlines()
-        logging.info(f"[Client {client.client_id}] Received {len(lines)} partial KING records from server.")
+        try:
+            partial_str = parameters[0].tobytes().decode("utf-8").strip()
+            lines = partial_str.splitlines()
+            logging.info(f"[Client {client.client_id}] Received {len(lines)} partial KING records from server.")
+        
+            for line in lines:
+                # Expect: sampleA_ano sampleB_ano partial_phi n1_star
+                parts = line.strip().split()
+                if len(parts) < 4:
+                    continue
+                sampleA_ano, sampleB_ano, phi_str, n1_str = parts
+                phi_chunk = float(phi_str)
+                n1_star   = float(n1_str)
 
-        for line in lines:
-            # Expect: sampleA_ano sampleB_ano partial_phi n1_star
-            parts = line.strip().split()
-            if len(parts) < 4:
-                continue
-            sampleA_ano, sampleB_ano, phi_str, n1_str = parts
-            phi_chunk = float(phi_str)
-            n1_star   = float(n1_str)
+                # Convert anonymized -> real ID if you keep them in chunk_sample_map.
+                # If not, store as is.
+                if chunk_index in client.chunk_sample_map:
+                    realA = client.chunk_sample_map[chunk_index].get(sampleA_ano, sampleA_ano)
+                    realB = client.chunk_sample_map[chunk_index].get(sampleB_ano, sampleB_ano)
+                else:
+                    realA, realB = sampleA_ano, sampleB_ano
 
-            # Convert anonymized -> real ID if you keep them in chunk_sample_map.
-            # If not, store as is.
-            if chunk_index in client.chunk_sample_map:
-                realA = client.chunk_sample_map[chunk_index].get(sampleA_ano, sampleA_ano)
-                realB = client.chunk_sample_map[chunk_index].get(sampleB_ano, sampleB_ano)
-            else:
-                realA, realB = sampleA_ano, sampleB_ano
+                key = tuple(sorted([realA, realB]))
+                if key not in client.king_accumulator:
+                    client.king_accumulator[key] = {"sum_phiN": 0.0, "sum_n1": 0.0, "phi": 0.0}
 
-            key = tuple(sorted([realA, realB]))
-            if key not in client.king_accumulator:
-                client.king_accumulator[key] = {"sum_phiN": 0.0, "sum_n1": 0.0, "phi": 0.0}
-
-            client.king_accumulator[key]["sum_phiN"] += phi_chunk * n1_star
-            client.king_accumulator[key]["sum_n1"]   += n1_star
+                client.king_accumulator[key]["sum_phiN"] += phi_chunk * n1_star
+                client.king_accumulator[key]["sum_n1"]   += n1_star
+        except Exception as e:
+                print(f"Error in KING records from server parameters: {e}")    
 
     return [data_array], 1, {}
 

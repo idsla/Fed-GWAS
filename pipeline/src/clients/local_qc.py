@@ -38,13 +38,14 @@ def compute_genotype_counts(plink_prefix, client_id):
             fin.readline()  # header
             for line in fin:
                 parts = line.strip().split()
-                if len(parts) >= 6:
+                if len(parts) >= 7:
                     try:
-                        N_AA = int(parts[3])
-                        N_Aa = int(parts[4])
-                        N_aa = int(parts[5])
+                        N_AA = int(parts[4])
+                        N_Aa = int(parts[5])
+                        N_aa = int(parts[6])
                         counts.append([N_AA, N_Aa, N_aa])
                     except ValueError:
+                        logging.error(f"[Client {client_id}] Failed to parse line: {parts}. Error: {ValueError}")
                         pass
         os.remove(file_name)
     return np.array(counts, dtype=np.int64)
@@ -65,12 +66,14 @@ def compute_missingness_counts(plink_prefix, client_id):
             fin.readline()  # header
             for line in fin:
                 parts = line.strip().split()
-                if len(parts) >= 6:
+                if len(parts) >= 5:
                     try:
-                        N_obs = int(parts[3])
-                        N_miss = int(parts[4])
+                        N_miss = int(parts[2])
+                        N_geno = int(parts[3])
+                        N_obs = N_geno - N_miss
                         mr_counts.append([N_obs, N_miss])
                     except ValueError:
+                        print(f"[Client {client_id}] Failed to parse line: {parts}. Error: {ValueError}")
                         pass
         os.remove(file_name)
     # remove .log

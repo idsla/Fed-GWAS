@@ -3,6 +3,7 @@ import subprocess
 import tarfile
 import uuid
 import numpy as np
+from flwr.common import parameters_to_ndarrays
 
 def run_server_lr(server_strategy, parameters_list):
     """
@@ -16,9 +17,10 @@ def run_server_lr(server_strategy, parameters_list):
     os.makedirs(session_id, exist_ok=True)
     merged_prefix = f"{session_id}/merged_lr"
     bed_files = []
+    ndarrays = parameters_to_ndarrays(parameters_list) 
 
-    for param in parameters_list:
-        chunk_bytes = param.numpy.tobytes()
+    for param in ndarrays:
+        chunk_bytes = param.tobytes()
         tar_path = os.path.join(session_id, f"{uuid.uuid4().hex}.tar")
         with open(tar_path, "wb") as f:
             f.write(chunk_bytes)

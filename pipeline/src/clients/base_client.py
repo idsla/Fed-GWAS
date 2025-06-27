@@ -157,7 +157,13 @@ class BaseGWASClient(fl.client.NumPyClient):
         return []
 
     def evaluate(self, parameters, config):
-        return 0.0, 1, {}
+        print(f"[Client {self.client_id}] evaluate called with config: {config}")
+        try:
+            # For now, just dummy evaluation
+            return 0.0, 1, {}
+        except Exception as e:
+            print(f"[Client {self.client_id}] Error during evaluate: {e}")
+            
 
     def run_make_bed(self, in_prefix, out_prefix, extra_args=None):
         """
@@ -204,169 +210,171 @@ class BaseGWASClient(fl.client.NumPyClient):
 
         partition_by = self.partition_by
         chunk_size = config.get("chunk_size", 100)
+        try:
+            if partition_by == "samples":
+                # Partition by samples using the .fam file
+                fam_file = self.plink_prefix + ".fam"
+                if not os.path.exists(fam_file):
+                    raise FileNotFoundError(f"{fam_file} not found.")
 
-        if partition_by == "samples":
-            # Partition by samples using the .fam file
-            fam_file = self.plink_prefix + ".fam"
-            if not os.path.exists(fam_file):
-                raise FileNotFoundError(f"{fam_file} not found.")
+                with open(fam_file, "r") as f:
+                    lines = f.readlines()
 
-            with open(fam_file, "r") as f:
-                lines = f.readlines()
+                fid_map = {}
+                sample_ids = []
+                for line in lines:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        fid, iid = parts[0], parts[1]
+                        sample_ids.append(iid)
+                        fid_map[iid] = fid
 
-            fid_map = {}
-            sample_ids = []
-            for line in lines:
-                parts = line.strip().split()
-                if len(parts) >= 2:
-                    fid, iid = parts[0], parts[1]
-                    sample_ids.append(iid)
-                    fid_map[iid] = fid
+                random.seed(self.global_seed)
+                random.shuffle(sample_ids)
+                chunks = [sample_ids[i: i + chunk_size] for i in range(0, len(sample_ids), chunk_size)]
 
-            random.seed(self.global_seed)
-            random.shuffle(sample_ids)
-            chunks = [sample_ids[i: i + chunk_size] for i in range(0, len(sample_ids), chunk_size)]
+                chunk_files = []
+                for idx, chunk_sids in enumerate(chunks):
+                    keep_file = f"temp_keep_{self.client_id}_{idx}.txt"
+                    with open(keep_file, "w") as f:
+                        f.write("FID IID\n")
+                        for sid in chunk_sids:
+                            fid = fid_map.get(sid, "0")  # Default to "0" if not found
+                            f.write(f"{fid} {sid}\n")
+                            #f.write(f"{sid}\n")
 
-            chunk_files = []
-            for idx, chunk_sids in enumerate(chunks):
-                keep_file = f"temp_keep_{self.client_id}_{idx}.txt"
-                with open(keep_file, "w") as f:
-                    f.write("FID IID\n")
-                    for sid in chunk_sids:
-                        fid = fid_map.get(sid, "0")  # Default to "0" if not found
-                        f.write(f"{fid} {sid}\n")
-                        #f.write(f"{sid}\n")
+                    chunk_prefix = f"chunk_{self.client_id}_{idx}"
+                    cmd = [
+                        "plink",
+                        "--bfile", self.plink_prefix,
+                        "--keep", keep_file,
+                        "--make-bed",
+                        "--out", chunk_prefix
+                    ]
+                    run_plink_command(cmd)
+                    os.remove(keep_file)
 
-                chunk_prefix = f"chunk_{self.client_id}_{idx}"
-                cmd = [
-                    "plink",
-                    "--bfile", self.plink_prefix,
-                    "--keep", keep_file,
-                    "--make-bed",
-                    "--out", chunk_prefix
+                    # anonymize and tar using our base_client method
+                    tar_file = self.anonymize_and_tar(chunk_prefix, idx)
+                    chunk_files.append(tar_file)
+
+                self.chunk_files = chunk_files
+
+            elif partition_by == "snps":
+                # Partition by SNPs using the .bim file
+                bim_file = self.plink_prefix + ".bim"
+                if not os.path.exists(bim_file):
+                    raise FileNotFoundError(f"{bim_file} not found.")
+
+                with open(bim_file, "r") as f:
+                    lines = f.readlines()
+
+                snp_ids = []
+                for line in lines:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        snp_ids.append(parts[1])
+
+                random.seed(self.global_seed)
+                random.shuffle(snp_ids)
+                chunks = [snp_ids[i: i + chunk_size] for i in range(0, len(snp_ids), chunk_size)]
+
+                chunk_files = []
+                for idx, chunk_snps in enumerate(chunks):
+                    extract_file = f"temp_extract_{self.client_id}_{idx}.txt"
+                    with open(extract_file, "w") as f:
+                        for snp in chunk_snps:
+                            f.write(f"{snp}\n")
+
+                    chunk_prefix = f"chunk_{self.client_id}_{idx}"
+                    cmd = [
+                        "plink",
+                        "--bfile", self.plink_prefix,
+                        "--extract", extract_file,
+                        "--make-bed",
+                        "--out", chunk_prefix
+                    ]
+                    run_plink_command(cmd)
+                    os.remove(extract_file)
+
+                    tar_file = self.anonymize_and_tar(chunk_prefix, idx)
+                    chunk_files.append(tar_file)
+
+                self.chunk_files = chunk_files
+
+            elif partition_by == "both":
+                # Partition both samples and SNPs.
+                sample_chunk_size = config.get("sample_chunk_size", chunk_size)
+                snp_chunk_size = config.get("snp_chunk_size", chunk_size)
+
+                fam_file = self.plink_prefix + ".fam"
+                if not os.path.exists(fam_file):
+                    raise FileNotFoundError(f"{fam_file} not found.")
+
+                with open(fam_file, "r") as f:
+                    fam_lines = f.readlines()
+
+                sample_ids = []
+                for line in fam_lines:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        sample_ids.append(parts[1])
+                random.seed(self.global_seed)
+                random.shuffle(sample_ids)
+                sample_chunks = [
+                    sample_ids[i: i + sample_chunk_size]
+                    for i in range(0, len(sample_ids), sample_chunk_size)
                 ]
-                run_plink_command(cmd)
-                os.remove(keep_file)
 
-                # anonymize and tar using our base_client method
-                tar_file = self.anonymize_and_tar(chunk_prefix, idx)
-                chunk_files.append(tar_file)
+                bim_file = self.plink_prefix + ".bim"
+                if not os.path.exists(bim_file):
+                    raise FileNotFoundError(f"{bim_file} not found.")
 
-            self.chunk_files = chunk_files
+                with open(bim_file, "r") as f:
+                    bim_lines = f.readlines()
 
-        elif partition_by == "snps":
-            # Partition by SNPs using the .bim file
-            bim_file = self.plink_prefix + ".bim"
-            if not os.path.exists(bim_file):
-                raise FileNotFoundError(f"{bim_file} not found.")
-
-            with open(bim_file, "r") as f:
-                lines = f.readlines()
-
-            snp_ids = []
-            for line in lines:
-                parts = line.strip().split()
-                if len(parts) >= 2:
-                    snp_ids.append(parts[1])
-
-            random.seed(self.global_seed)
-            random.shuffle(snp_ids)
-            chunks = [snp_ids[i: i + chunk_size] for i in range(0, len(snp_ids), chunk_size)]
-
-            chunk_files = []
-            for idx, chunk_snps in enumerate(chunks):
-                extract_file = f"temp_extract_{self.client_id}_{idx}.txt"
-                with open(extract_file, "w") as f:
-                    for snp in chunk_snps:
-                        f.write(f"{snp}\n")
-
-                chunk_prefix = f"chunk_{self.client_id}_{idx}"
-                cmd = [
-                    "plink",
-                    "--bfile", self.plink_prefix,
-                    "--extract", extract_file,
-                    "--make-bed",
-                    "--out", chunk_prefix
+                snp_ids = []
+                for line in bim_lines:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        snp_ids.append(parts[1])
+                random.seed(self.global_seed)
+                random.shuffle(snp_ids)
+                snp_chunks = [
+                    snp_ids[i: i + snp_chunk_size]
+                    for i in range(0, len(snp_ids), snp_chunk_size)
                 ]
-                run_plink_command(cmd)
-                os.remove(extract_file)
 
-                tar_file = self.anonymize_and_tar(chunk_prefix, idx)
-                chunk_files.append(tar_file)
+                # Pair them using the minimum number of chunks
+                num_pairs = min(len(sample_chunks), len(snp_chunks))
+                chunk_files = []
+                for idx in range(num_pairs):
+                    keep_file = f"temp_keep_{self.client_id}_{idx}.txt"
+                    with open(keep_file, "w") as f:
+                        for sid in sample_chunks[idx]:
+                            f.write(f"{sid}\n")
 
-            self.chunk_files = chunk_files
+                    extract_file = f"temp_extract_{self.client_id}_{idx}.txt"
+                    with open(extract_file, "w") as f:
+                        for snp in snp_chunks[idx]:
+                            f.write(f"{snp}\n")
 
-        elif partition_by == "both":
-            # Partition both samples and SNPs.
-            sample_chunk_size = config.get("sample_chunk_size", chunk_size)
-            snp_chunk_size = config.get("snp_chunk_size", chunk_size)
+                    chunk_prefix = f"chunk_{self.client_id}_{idx}"
+                    cmd = [
+                        "plink",
+                        "--bfile", self.plink_prefix,
+                        "--keep", keep_file,
+                        "--extract", extract_file,
+                        "--make-bed",
+                        "--out", chunk_prefix
+                    ]
+                    run_plink_command(cmd)
+                    os.remove(keep_file)
+                    os.remove(extract_file)
 
-            fam_file = self.plink_prefix + ".fam"
-            if not os.path.exists(fam_file):
-                raise FileNotFoundError(f"{fam_file} not found.")
+                    tar_file = self.anonymize_and_tar(chunk_prefix, idx)
+                    chunk_files.append(tar_file)
 
-            with open(fam_file, "r") as f:
-                fam_lines = f.readlines()
-
-            sample_ids = []
-            for line in fam_lines:
-                parts = line.strip().split()
-                if len(parts) >= 2:
-                    sample_ids.append(parts[1])
-            random.seed(self.global_seed)
-            random.shuffle(sample_ids)
-            sample_chunks = [
-                sample_ids[i: i + sample_chunk_size]
-                for i in range(0, len(sample_ids), sample_chunk_size)
-            ]
-
-            bim_file = self.plink_prefix + ".bim"
-            if not os.path.exists(bim_file):
-                raise FileNotFoundError(f"{bim_file} not found.")
-
-            with open(bim_file, "r") as f:
-                bim_lines = f.readlines()
-
-            snp_ids = []
-            for line in bim_lines:
-                parts = line.strip().split()
-                if len(parts) >= 2:
-                    snp_ids.append(parts[1])
-            random.seed(self.global_seed)
-            random.shuffle(snp_ids)
-            snp_chunks = [
-                snp_ids[i: i + snp_chunk_size]
-                for i in range(0, len(snp_ids), snp_chunk_size)
-            ]
-
-            # Pair them using the minimum number of chunks
-            num_pairs = min(len(sample_chunks), len(snp_chunks))
-            chunk_files = []
-            for idx in range(num_pairs):
-                keep_file = f"temp_keep_{self.client_id}_{idx}.txt"
-                with open(keep_file, "w") as f:
-                    for sid in sample_chunks[idx]:
-                        f.write(f"{sid}\n")
-
-                extract_file = f"temp_extract_{self.client_id}_{idx}.txt"
-                with open(extract_file, "w") as f:
-                    for snp in snp_chunks[idx]:
-                        f.write(f"{snp}\n")
-
-                chunk_prefix = f"chunk_{self.client_id}_{idx}"
-                cmd = [
-                    "plink",
-                    "--bfile", self.plink_prefix,
-                    "--keep", keep_file,
-                    "--extract", extract_file,
-                    "--make-bed",
-                    "--out", chunk_prefix
-                ]
-                run_plink_command(cmd)
-                os.remove(keep_file)
-                os.remove(extract_file)
-
-                tar_file = self.anonymize_and_tar(chunk_prefix, idx)
-                chunk_files.append(tar_file)
-
-            self.chunk_files = chunk_files
+                self.chunk_files = chunk_files
+        except Exception as e:
+            print(f"[Client {self.client_id}] Error during data partitioning: {e}")            
