@@ -20,7 +20,7 @@ def handle_iterative_king(client, parameters, config):
 
     # If we've already processed all chunks, finalize local kinship.
     if client.current_chunk_idx >= len(client.chunk_files):
-        logging.info(f"[Client {client.client_id}] No more KING chunks. Performing final local kinship update.")
+        client.logger.info(f"[Client {client.client_id}] No more KING chunks. Performing final local kinship update.")
 
         # 1) Compute final phi for each pair
         for pair_key, accum in client.king_accumulator.items():
@@ -31,7 +31,7 @@ def handle_iterative_king(client, parameters, config):
             else:
                 accum["phi"] = 0.0
 
-        logging.info(f"[Client {client.client_id}] Final local KING update complete. "
+        client.logger.info(f"[Client {client.client_id}] Final local KING update complete. "
                      f"{len(client.king_accumulator)} sample pairs stored.")
 
         # 2) Filter out samples beyond threshold
@@ -50,14 +50,14 @@ def handle_iterative_king(client, parameters, config):
         chunk_data = f.read()
     data_array = np.frombuffer(chunk_data, dtype=np.uint8)
 
-    logging.info(f"[Client {client.client_id}] Sending KING chunk "
+    client.logger.info(f"[Client {client.client_id}] Sending KING chunk "
                  f"{chunk_index+1}/{len(client.chunk_files)}")
 
     # If the server returned partial KING results for this chunk
     if parameters and len(parameters) > 0:
         partial_str = parameters[0].tobytes().decode("utf-8").strip()
         lines = partial_str.splitlines()
-        logging.info(f"[Client {client.client_id}] Received {len(lines)} partial KING records from server.")
+        client.logger.info(f"[Client {client.client_id}] Received {len(lines)} partial KING records from server.")
 
         for line in lines:
             # Expect: sampleA_ano sampleB_ano partial_phi n1_star
@@ -98,10 +98,10 @@ def _filter_samples_by_king(client, threshold):
             samples_to_remove.add(sB)
 
     if not samples_to_remove:
-        logging.info(f"[Client {client.client_id}] No samples exceed KING threshold {threshold}.")
+        client.logger.info(f"[Client {client.client_id}] No samples exceed KING threshold {threshold}.")
         return
 
-    logging.info(f"[Client {client.client_id}] Removing {len(samples_to_remove)} samples with phi > {threshold}.")
+    client.logger.info(f"[Client {client.client_id}] Removing {len(samples_to_remove)} samples with phi > {threshold}.")
 
     temp_remove = "temp_remove_king.txt"
     with open(temp_remove, "w") as f:
@@ -120,7 +120,7 @@ def _filter_samples_by_king(client, threshold):
         subprocess.run(cmd, check=True)
         client.plink_prefix = filtered_prefix
     except subprocess.CalledProcessError as e:
-        logging.error(f"[Client {client.client_id}] PLINK filtering failed: {e}")
+        client.logger.error(f"[Client {client.client_id}] PLINK filtering failed: {e}")
 
     os.remove(temp_remove)
     # Optionally reload local samples

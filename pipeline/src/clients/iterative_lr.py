@@ -20,7 +20,7 @@ def handle_iterative_lr(client, parameters, config):
 
     # If we've sent all chunks, do the final local significance update
     if client.current_chunk_idx >= len(client.chunk_files):
-        logging.info(f"[Client {client.client_id}] No more LR chunks. Performing final local significance update.")
+        client.logger.info(f"[Client {client.client_id}] No more LR chunks. Performing final local significance update.")
 
         # Example: for each SNP, we have a list of pvals in client.lr_pvals[snpID].
         # We do a majority vote based on threshold.
@@ -35,7 +35,7 @@ def handle_iterative_lr(client, parameters, config):
             majority_is_sig = (num_sig > (len(sig_flags) // 2))
             final_significance[snp_id] = majority_is_sig
 
-        logging.info(f"[Client {client.client_id}] Final LR significance updated for {len(final_significance)} SNPs.")
+        client.logger.info(f"[Client {client.client_id}] Final LR significance updated for {len(final_significance)} SNPs.")
         # You might store final_significance in client.lr_final or some structure for later.
         client.lr_final = final_significance
 
@@ -51,14 +51,14 @@ def handle_iterative_lr(client, parameters, config):
         chunk_data = f.read()
     data_array = np.frombuffer(chunk_data, dtype=np.uint8)
 
-    logging.info(f"[Client {client.client_id}] sending LR chunk {chunk_index + 1}/{len(client.chunk_files)}")
+    client.logger.info(f"[Client {client.client_id}] sending LR chunk {chunk_index + 1}/{len(client.chunk_files)}")
 
     # If server returned p-values, parse them and store
     if parameters and len(parameters) > 0:
         # e.g., each line: "anonSNPID p_value"
         lr_results_str = parameters[0].tobytes().decode("utf-8").strip()
         lines = lr_results_str.splitlines()
-        logging.info(f"[Client {client.client_id}] Received {len(lines)} partial LR p-values from server.")
+        client.logger.info(f"[Client {client.client_id}] Received {len(lines)} partial LR p-values from server.")
 
         # let us find the local id map for 'chunk_index'
         # chunk_snp_map[chunk_index][anonSNP] -> realSNP

@@ -4,31 +4,30 @@ import tarfile
 import uuid
 import numpy as np
 
-def run_server_lr(server_strategy, parameters_list):
+def run_server_lr(server_strategy, parameters_list, output_dir=None):
     """
-    Server-based LR aggregator:
-    1. For each parameter (tar file bytes) from clients, save as a tar file.
-    2. Unpack each tar file, merge resulting PLINK binary files using --bmerge.
-    3. Run PLINK logistic regression on the merged dataset.
-    4. Parse the .assoc.logistic file and return p-values as text (e.g., lines of "anonSNPID p_value").
+    Server-based LR aggregator with configurable output directory.
     """
+    if output_dir is None:
+        output_dir = getattr(server_strategy, 'output_dir', '.')
     session_id = uuid.uuid4().hex
-    os.makedirs(session_id, exist_ok=True)
-    merged_prefix = f"{session_id}/merged_lr"
+    session_path = os.path.join(output_dir, session_id)
+    os.makedirs(session_path, exist_ok=True)
+    merged_prefix = f"{session_path}/merged_lr"
     bed_files = []
 
     for param in parameters_list:
         chunk_bytes = param.numpy.tobytes()
-        tar_path = os.path.join(session_id, f"{uuid.uuid4().hex}.tar")
+        tar_path = os.path.join(session_path, f"{uuid.uuid4().hex}.tar")
         with open(tar_path, "wb") as f:
             f.write(chunk_bytes)
         with tarfile.open(tar_path, "r") as tf:
-            tf.extractall(session_id)
+            tf.extractall(session_path)
         chunk_uuid = uuid.uuid4().hex
-        bed_file = os.path.join(session_id, f"chunk_{chunk_uuid}")
-        os.rename(os.path.join(session_id, "chunk.bed"), f"{bed_file}.bed")
-        os.rename(os.path.join(session_id, "chunk.bim"), f"{bed_file}.bim")
-        os.rename(os.path.join(session_id, "chunk.fam"), f"{bed_file}.fam")
+        bed_file = os.path.join(session_path, f"chunk_{chunk_uuid}")
+        os.rename(os.path.join(session_path, "chunk.bed"), f"{bed_file}.bed")
+        os.rename(os.path.join(session_path, "chunk.bim"), f"{bed_file}.bim")
+        os.rename(os.path.join(session_path, "chunk.fam"), f"{bed_file}.fam")
         bed_files.append(bed_file)
         os.remove(tar_path)
 
@@ -64,7 +63,7 @@ def run_server_lr(server_strategy, parameters_list):
         "plink",
         "--bfile", merged_prefix,
         "--logistic",
-        "--out", f"{session_id}/lr_results"
+        "--out", f"{session_path}/lr_results"
     ]
     try:
         subprocess.run(lr_cmd, check=True)
@@ -73,7 +72,7 @@ def run_server_lr(server_strategy, parameters_list):
         print(f"[Server LR] PLINK LR failed: {e}")
 
     # Parse the .assoc.logistic file and return p-values as text.
-    assoc_file = f"{session_id}/lr_results.assoc.logistic"
+    assoc_file = f"{session_path}/lr_results.assoc.logistic"
     pvals_text = ""
     if os.path.exists(assoc_file):
         with open(assoc_file, "r") as f:

@@ -9,11 +9,7 @@ import logging
 import tarfile
 import hashlib
 import shutil
-logging.basicConfig(
-    filename="iteration_log.txt",
-    level=logging.INFO,
-    format="%(asctime)s %(message)s"
-)
+
 
 def run_plink_command(cmd):
     try:
@@ -132,7 +128,7 @@ class BaseGWASClient(fl.client.NumPyClient):
     Specific stages (QC, iterative LR, etc.) can be implemented in separate modules
     and imported into the final client class.
     """
-    def __init__(self, plink_prefix, client_id="client", partition_by="samples"):
+    def __init__(self, plink_prefix, client_id="client", partition_by="samples", log_dir="logs"):
         self.plink_prefix = plink_prefix
         self.client_id = client_id
         self.partition_by = partition_by
@@ -152,6 +148,17 @@ class BaseGWASClient(fl.client.NumPyClient):
         #      chunk_snp_map[i][newSNP]   = oldSNP
         self.chunk_sample_map = {}
         self.chunk_snp_map = {}
+
+        self.log_dir = log_dir
+        os.makedirs(self.log_dir, exist_ok=True)
+        log_path = os.path.join(self.log_dir, "iteration_log.txt")
+        self.logger = logging.getLogger(f"client_{self.client_id}")
+        self.logger.setLevel(logging.INFO)
+        # Remove any existing handlers (avoid duplicate logs)
+        self.logger.handlers = []
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+        self.logger.addHandler(file_handler)
 
     def get_parameters(self, config):
         return []
@@ -204,9 +211,21 @@ class BaseGWASClient(fl.client.NumPyClient):
 
         partition_by = self.partition_by
         chunk_size = config.get("chunk_size", 100)
+        intermediate_dir = getattr(self, 'intermediate_dir', 'intermediate')
+        os.makedirs(intermediate_dir, exist_ok=True)
+
+        def create_tar(anon_prefix: str) -> str:
+            tar_file = os.path.join(intermediate_dir, f"{os.path.basename(anon_prefix)}.tar")
+            with tarfile.open(tar_file, "w") as tf:
+                tf.add(f"{anon_prefix}.bed", arcname="chunk.bed")
+                tf.add(f"{anon_prefix}.bim", arcname="chunk.bim")
+                tf.add(f"{anon_prefix}.fam", arcname="chunk.fam")
+            os.remove(f"{anon_prefix}.bed")
+            os.remove(f"{anon_prefix}.bim")
+            os.remove(f"{anon_prefix}.fam")
+            return tar_file
 
         if partition_by == "samples":
-            # Partition by samples using the .fam file
             fam_file = self.plink_prefix + ".fam"
             if not os.path.exists(fam_file):
                 raise FileNotFoundError(f"{fam_file} not found.")
@@ -229,15 +248,14 @@ class BaseGWASClient(fl.client.NumPyClient):
 
             chunk_files = []
             for idx, chunk_sids in enumerate(chunks):
-                keep_file = f"temp_keep_{self.client_id}_{idx}.txt"
+                keep_file = os.path.join(intermediate_dir, f"temp_keep_{self.client_id}_{idx}.txt")
                 with open(keep_file, "w") as f:
                     f.write("FID IID\n")
                     for sid in chunk_sids:
-                        fid = fid_map.get(sid, "0")  # Default to "0" if not found
+                        fid = fid_map.get(sid, "0")
                         f.write(f"{fid} {sid}\n")
-                        #f.write(f"{sid}\n")
 
-                chunk_prefix = f"chunk_{self.client_id}_{idx}"
+                chunk_prefix = os.path.join(intermediate_dir, f"chunk_{self.client_id}_{idx}")
                 cmd = [
                     "plink",
                     "--bfile", self.plink_prefix,
@@ -248,14 +266,12 @@ class BaseGWASClient(fl.client.NumPyClient):
                 run_plink_command(cmd)
                 os.remove(keep_file)
 
-                # anonymize and tar using our base_client method
                 tar_file = self.anonymize_and_tar(chunk_prefix, idx)
                 chunk_files.append(tar_file)
 
             self.chunk_files = chunk_files
 
         elif partition_by == "snps":
-            # Partition by SNPs using the .bim file
             bim_file = self.plink_prefix + ".bim"
             if not os.path.exists(bim_file):
                 raise FileNotFoundError(f"{bim_file} not found.")
@@ -275,12 +291,12 @@ class BaseGWASClient(fl.client.NumPyClient):
 
             chunk_files = []
             for idx, chunk_snps in enumerate(chunks):
-                extract_file = f"temp_extract_{self.client_id}_{idx}.txt"
+                extract_file = os.path.join(intermediate_dir, f"temp_extract_{self.client_id}_{idx}.txt")
                 with open(extract_file, "w") as f:
                     for snp in chunk_snps:
                         f.write(f"{snp}\n")
 
-                chunk_prefix = f"chunk_{self.client_id}_{idx}"
+                chunk_prefix = os.path.join(intermediate_dir, f"chunk_{self.client_id}_{idx}")
                 cmd = [
                     "plink",
                     "--bfile", self.plink_prefix,
@@ -297,7 +313,6 @@ class BaseGWASClient(fl.client.NumPyClient):
             self.chunk_files = chunk_files
 
         elif partition_by == "both":
-            # Partition both samples and SNPs.
             sample_chunk_size = config.get("sample_chunk_size", chunk_size)
             snp_chunk_size = config.get("snp_chunk_size", chunk_size)
 
@@ -339,21 +354,20 @@ class BaseGWASClient(fl.client.NumPyClient):
                 for i in range(0, len(snp_ids), snp_chunk_size)
             ]
 
-            # Pair them using the minimum number of chunks
             num_pairs = min(len(sample_chunks), len(snp_chunks))
             chunk_files = []
             for idx in range(num_pairs):
-                keep_file = f"temp_keep_{self.client_id}_{idx}.txt"
+                keep_file = os.path.join(intermediate_dir, f"temp_keep_{self.client_id}_{idx}.txt")
                 with open(keep_file, "w") as f:
                     for sid in sample_chunks[idx]:
                         f.write(f"{sid}\n")
 
-                extract_file = f"temp_extract_{self.client_id}_{idx}.txt"
+                extract_file = os.path.join(intermediate_dir,  f"temp_extract_{self.client_id}_{idx}.txt")
                 with open(extract_file, "w") as f:
                     for snp in snp_chunks[idx]:
                         f.write(f"{snp}\n")
 
-                chunk_prefix = f"chunk_{self.client_id}_{idx}"
+                chunk_prefix = os.path.join(intermediate_dir,  f"chunk_{self.client_id}_{idx}")
                 cmd = [
                     "plink",
                     "--bfile", self.plink_prefix,

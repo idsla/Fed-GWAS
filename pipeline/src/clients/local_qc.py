@@ -2,9 +2,9 @@
 import os
 import numpy as np
 import logging
-from base_client import run_plink_command
+from pipeline.src.clients.base_client import run_plink_command
 
-def exclude_samples_by_missing_rate(plink_prefix, mind_threshold=0.1, new_prefix="filtered_data_by_sample"):
+def exclude_samples_by_missing_rate(plink_prefix, mind_threshold=0.1, new_prefix="filtered_data_by_sample", log_dir="logs"):
     """
     Exclude samples whose missing rate exceeds 'mind_threshold'.
     Produces a new .bed set in 'new_prefix'.
@@ -12,6 +12,8 @@ def exclude_samples_by_missing_rate(plink_prefix, mind_threshold=0.1, new_prefix
     mind_threshold: float in [0.0, 1.0].
       Example: 0.1 means filter out any sample with >10% missing rate.
     """
+    new_prefix = os.path.join(log_dir, new_prefix)
+    os.makedirs(log_dir, exist_ok=True)
     cmd = [
         "plink",
         "--bfile", plink_prefix,
@@ -22,12 +24,13 @@ def exclude_samples_by_missing_rate(plink_prefix, mind_threshold=0.1, new_prefix
     run_plink_command(cmd)
     return new_prefix
 
-def compute_genotype_counts(plink_prefix, client_id):
+def compute_genotype_counts(plink_prefix, client_id, log_dir="logs"):
     """
     Run PLINK to compute genotype counts.
     Return Nx3 array of [N_AA, N_Aa, N_aa] for each SNP.
     """
-    out_prefix = f"qc_counts_{client_id}"
+    out_prefix = os.path.join(log_dir, f"qc_counts_{client_id}")
+    os.makedirs(log_dir, exist_ok=True)
     cmd = ["plink", "--bfile", plink_prefix, "--freq", "counts", "--out", out_prefix]
     run_plink_command(cmd)
 
@@ -49,12 +52,13 @@ def compute_genotype_counts(plink_prefix, client_id):
         os.remove(file_name)
     return np.array(counts, dtype=np.int64)
 
-def compute_missingness_counts(plink_prefix, client_id):
+def compute_missingness_counts(plink_prefix, client_id, log_dir="logs"):
     """
     Run PLINK to compute the per-SNP missing rate.
     Return Nx2 array of [N_obs, N_miss].
     """
-    out_prefix = f"mr_{client_id}"
+    out_prefix = os.path.join(log_dir, f"mr_{client_id}")
+    os.makedirs(log_dir, exist_ok=True)
     cmd = ["plink", "--bfile", plink_prefix, "--missing", "--out", out_prefix]
     run_plink_command(cmd)
 
@@ -80,11 +84,13 @@ def compute_missingness_counts(plink_prefix, client_id):
 
     return np.array(mr_counts, dtype=np.int64)
 
-def run_local_lr(plink_prefix, out_prefix="local_lr"):
+def run_local_lr(plink_prefix, out_prefix="local_lr", log_dir="logs"):
     """
     Run PLINK logistic regression.
     Return path to the .assoc.logistic file.
     """
+    out_prefix = os.path.join(log_dir, out_prefix)
+    os.makedirs(log_dir, exist_ok=True)
     cmd = [
         "plink",
         "--bfile", plink_prefix,
@@ -120,16 +126,18 @@ def parse_insignificant_snps(assoc_file, p_threshold=1e-3):
                 pass
     return snps
 
-def exclude_snps(plink_prefix, snp_list, new_prefix="filtered_data"):
+def exclude_snps(plink_prefix, snp_list, new_prefix="filtered_data", log_dir="logs"):
     """
     Exclude the given SNPs from plink_prefix -> produce new_prefix .bed set.
     """
     if not snp_list:
         return plink_prefix
-    exclude_file = "temp_exclude_snps.txt"
+    os.makedirs(log_dir, exist_ok=True)
+    exclude_file = os.path.join(log_dir, "temp_exclude_snps.txt")
     with open(exclude_file, "w") as f:
         for snp in snp_list:
             f.write(f"{snp}\n")
+    new_prefix = os.path.join(log_dir, new_prefix)
     cmd = [
         "plink",
         "--bfile", plink_prefix,
