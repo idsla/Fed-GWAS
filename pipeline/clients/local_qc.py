@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import logging
-from pipeline.src.clients.base_client import run_plink_command
+from pipeline.clients.base_client import run_plink_command
 
 def exclude_samples_by_missing_rate(plink_prefix, mind_threshold=0.1, new_prefix="filtered_data_by_sample", log_dir="logs"):
     """

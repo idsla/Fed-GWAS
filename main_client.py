@@ -9,9 +9,9 @@ import os
 # Add parent directory to path for server imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pipeline.src.clients.base_client import BaseGWASClient
-from pipeline.src.server.prg_masking import create_client_masking_helper
-from pipeline.src.clients.local_qc import (
+from pipeline.clients.base_client import BaseGWASClient
+from pipeline.server.prg_masking import create_client_masking_helper
+from pipeline.clients.local_qc import (
     compute_genotype_counts,
     compute_missingness_counts,
     run_local_lr,
@@ -19,9 +19,9 @@ from pipeline.src.clients.local_qc import (
     exclude_snps,
     exclude_samples_by_missing_rate,
 )
-from pipeline.src.clients.iterative_king import handle_iterative_king
-from pipeline.src.clients.iterative_lr import handle_iterative_lr
-from pipeline.src.clients.data_loder import DataLoader
+from pipeline.clients.iterative_king import handle_iterative_king
+from pipeline.clients.iterative_lr import handle_iterative_lr
+from pipeline.clients.data_loder import DataLoader
 import os
 import uuid
 

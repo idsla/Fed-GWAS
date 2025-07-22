@@ -4,10 +4,10 @@ import numpy as np
 import flwr as fl
 import os
 
-from pipeline.src.server.aggregator_qc import aggregate_global_qc
-from pipeline.src.server.aggregator_king import run_server_king
-from pipeline.src.server.aggregator_lr import run_server_lr, merge_insign_snp_sets
-from pipeline.src.server.prg_masking import create_prg_masking_aggregator
+from pipeline.server.aggregator_qc import aggregate_global_qc
+from pipeline.server.aggregator_king import run_server_king
+from pipeline.server.aggregator_lr import run_server_lr, merge_insign_snp_sets
+from pipeline.server.prg_masking import create_prg_masking_aggregator
 from flwr.common import parameters_to_ndarrays
 import logging
 

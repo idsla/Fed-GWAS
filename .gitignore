@@ -43,6 +43,8 @@ tasks.json
 tasks/ 
 
 # claude
+.claude/
+.venv/
 claude.md
 .windsurfrules
 package-lock.json
@@ -51,6 +53,3 @@ README-task-manager.md
 .env.example
 /scripts/
 .cursor/*
-pipeline/prd/*
-pipeline/.claude/*
-pipeline/.venv/*

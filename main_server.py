@@ -1,7 +1,7 @@
 # server/main_server.py
 
 import flwr as fl 
-from pipeline.src.server.strategy import FederatedGWASStrategy
+from pipeline.server.strategy import FederatedGWASStrategy
 from flwr.server import ServerConfig
 
 def main():
