@@ -130,22 +130,16 @@ participation:
 
 ---
 
-## Output & Log Management (NEW)
-- **All intermediate and log files are now written to the directories specified in `config.yaml` (`intermediate_dir`, `log_dir`).**
-- **At the start of each client run, these directories are automatically cleared and recreated** to avoid redundant or stale outputs.
-- **All log messages** (including stage progress, warnings, and errors) are written to `log_dir/iteration_log.txt` using a per-client logger.
-- **No outputs are written to the current directory**—everything is organized per client.
-
----
-
 ## Running the Pipeline
 
-### 1. Start the Server in one terminal window
+### Lauch Flower Federation
+
+#### 1. Start the Server Node in one terminal window
 ```bash
 $ flower-superlink --insecure
 ```
 
-### 2. Start each Client in a separate terminal window, client config are in `pipeline/simulated_data/simulated_data/tiny/center_xx/config.yaml`, noted that at least two clients are required.
+#### 2. Start each Client in a separate terminal window, client config are in `pipeline/simulated_data/simulated_data/tiny/center_xx/config.yaml`, noted that at least two clients are required.
 
 Initialize client 1
 ```bash
@@ -153,7 +147,7 @@ flower-supernode \
      --insecure \
      --superlink 127.0.0.1:9092 \
      --clientappio-api-address 127.0.0.1:9094 \
-     pipeline/simulated_data/simulated_data/tiny/center_1/config.yaml
+     --node-config "pipeline/simulated_data/simulated_data/tiny/center_1/config.yaml"
 ```
 
 Initialize client 2
@@ -162,13 +156,23 @@ flower-supernode \
      --insecure \
      --superlink 127.0.0.1:9092 \
      --clientappio-api-address 127.0.0.1:9095 \
-     pipeline/simulated_data/simulated_data/tiny/center_2/config.yaml
+     --node-config "pipeline/simulated_data/simulated_data/tiny/center_2/config.yaml"
 ```
 
 - Each client will generate a new unique client ID on each run.
 - All outputs and logs will be stored in the specified directories, which are cleared at the start of each run.
 
-### Certificate and HTTP SSL Communication
+### Run the Flower App on the Federation
+
+We have set configuration in `pyproject.toml` for the Flower Federation, you can run the following command to start the our FedGWAS Pipeline App on the Federation:
+
+```bash
+flwr run .local-deployment --stream
+```
+
+### Other Notes:
+
+#### Certificate and HTTP SSL Communication
 
 ```bash
 flower-superlink \
@@ -188,6 +192,14 @@ flower-supernode \
      --root-certificates <your-ca-cert-filepath> \
      <other-args>
 ```
+
+---
+
+## Output & Log Management (NEW)
+- **All intermediate and log files are now written to the directories specified in `config.yaml` (`intermediate_dir`, `log_dir`).**
+- **At the start of each client run, these directories are automatically cleared and recreated** to avoid redundant or stale outputs.
+- **All log messages** (including stage progress, warnings, and errors) are written to `log_dir/iteration_log.txt` using a per-client logger.
+- **No outputs are written to the current directory**—everything is organized per client.
 
 ---
 
