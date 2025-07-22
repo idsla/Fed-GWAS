@@ -6,7 +6,7 @@ import numpy as np
 import sys
 import os
 from flwr.client import ClientApp
-from flwr.common import Context
+from flwr.common import Context, ConfigRecord, RecordDict
 
 # Add parent directory to path for server imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,56 +32,59 @@ class FedLRClient(BaseGWASClient):
     def __init__(
         self, 
         partition_id,
+        context: Context,
         config_file="config.yaml", 
         partition_by="samples"
     ):
         
-        # Use DataLoader to load configuration and transform data if necessary
-        loader = DataLoader(config_file)
-        print(loader)
+        # Store context and client_state for easier access
+        self.client_state = (context.state)
+        self.partition_id = partition_id
+        self.partition_by = partition_by
+        self.client_id = "client_" + str(partition_id)
         
-        # Clear intermediate and log directories at the start of each run
-        import shutil
-        if os.path.exists(loader.intermediate_dir):
-            shutil.rmtree(loader.intermediate_dir)
-        os.makedirs(loader.intermediate_dir, exist_ok=True)
+        # Check if this is first initialization or recovery from state
+        if not self._is_client_initialized():
         
-        if os.path.exists(loader.log_dir):
-            shutil.rmtree(loader.log_dir)
-        os.makedirs(loader.log_dir, exist_ok=True)
-        
-        print('makedir successful')
-        
-        # transform_data() returns the PLINK dataset prefix (e.g., "data/client_data")
-        plink_prefix = loader.transform_data()
-        client_id = "client_" + str(partition_id)
-        print(plink_prefix, client_id)
-        
+            # First initialization - use DataLoader
+            print('[Client] First initialization - loading from config file...')
+            loader = DataLoader(config_file)
+            loader.transform_data()
+            print(loader)
+            
+            # Store all configuration to state
+            self.client_state = self._store_config_to_state(
+                self.client_state, loader, self.client_id, self.partition_by
+            )
+            
+            print(f'[Client] First initialization complete for {self.client_id}')
+        else:
+            print('[Client] Loading configuration from state...')
+            loader = self._load_config_from_state(self.client_state.config_records)
+                
+        self.plink_prefix = loader.plink_prefix
+        self.log_dir = loader.log_dir
+        self.intermediate_dir = loader.intermediate_dir
+
+        # Initialize base client with loaded configuration
         super().__init__(
-            plink_prefix, 
-            client_id=client_id, 
+            self.plink_prefix, 
+            client_id=self.client_id, 
             partition_by=partition_by, 
-            log_dir=loader.log_dir
+            log_dir=self.log_dir
         )
         
-        self.intermediate_dir = loader.intermediate_dir
-        self.log_dir = loader.log_dir
-
-        # Overwrite thresholds from config loaded via DataLoader
+        # Load thresholds from configuration
         thresholds = loader.get_thresholds()
         self.maf_threshold = thresholds.get("maf_threshold", 0.01)
         self.miss_threshold = thresholds.get("missing_threshold", 0.1)
         self.hwe_threshold = thresholds.get("hwe_threshold", 1e-6)
         self.p_threshold = thresholds.get("p_threshold", 5e-3)
         
-        # Flower configuration, e.g., server address and num_rounds, from DataLoader
+        # Load other configuration from loader
         self.flower_config = loader.get_flower_config()
-        
-        # Additional parameters from config (e.g., chunk sizes)
         self.parameters = loader.get_parameters()
-        
-        # Participation flags per stage from config
-        self.participation = loader.participation
+        self.participation = loader.get_participation()
         
         # For final LR significance, if desired
         self.lr_final = {}
@@ -92,6 +95,65 @@ class FedLRClient(BaseGWASClient):
         # PRG-MASKING helper (will be initialized when we know num_clients)
         self.masking_helper = None
         self.num_clients = 3  # Default, should be configured
+
+    def _store_config_to_state(
+        self, 
+        client_state: RecordDict, 
+        loader: DataLoader, 
+        client_id: str, 
+        partition_by: str
+    ):
+        """
+        Store all client configuration to state for future rounds.
+        
+        Args:
+            loader: DataLoader instance with configuration
+            client_id: Client identifier
+            partition_by: Partitioning strategy
+        """ 
+        # Store in state
+        client_state.config_records["client_params"] = ConfigRecord({
+            "client_id": client_id,
+            "partition_by": partition_by,
+            'initialized': True
+        })
+        
+        # Convert DataLoader to config records
+        config_dict = loader.to_config_records()
+        client_state.config_records.update(config_dict)
+        print(f"[Client] Stored configuration to state for {client_id}")
+        
+        return client_state
+    
+    def _load_config_from_state(self, client_config_records: dict):
+        """
+        Load client configuration from state.
+        
+        Returns: 
+            dict: Dictionary containing all client configuration
+        """        
+        # Recreate DataLoader from stored config
+        loader = DataLoader.from_config_records(client_config_records)
+        
+        print(f"[Client] Loaded configuration from state for {self.client_id}")
+        
+        return loader
+    
+    def _is_client_initialized(self) -> bool:
+        """
+        Check if client has been initialized before.
+        
+        Returns:
+            bool: True if client was previously initialized
+        """
+        if not self.client_state:
+            return False
+            
+        return (
+            "client_params" in self.client_state.config_records and
+            'initialized' in self.client_state.config_records["client_params"] and
+            self.client_state.config_records["client_params"]["initialized"]
+        )
 
     def fit(self, parameters, config):
         
@@ -304,6 +366,7 @@ def client_fn(context: Context):
     
     return FedLRClient(
         partition_id=partition_id,
+        context=context,
         config_file=config_file_path, 
         partition_by=partition_by
     ).to_client()

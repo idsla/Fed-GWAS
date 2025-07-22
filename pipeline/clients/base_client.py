@@ -9,6 +9,7 @@ import logging
 import tarfile
 import hashlib
 import shutil
+from pipeline.clients.logger_manager import LoggerManager
 
 
 def run_plink_command(cmd):
@@ -163,16 +164,9 @@ class BaseGWASClient(fl.client.NumPyClient):
         self.chunk_snp_map = {}
 
         self.log_dir = log_dir
-        os.makedirs(self.log_dir, exist_ok=True)
-        log_path = os.path.join(self.log_dir, "iteration_log.txt")
-        self.logger = logging.getLogger(f"client_{self.client_id}")
-        self.logger.setLevel(logging.INFO)
         
-        # Remove any existing handlers (avoid duplicate logs)
-        self.logger.handlers = []
-        file_handler = logging.FileHandler(log_path)
-        file_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
-        self.logger.addHandler(file_handler)
+        # Use LoggerManager to get/create logger
+        self.logger = LoggerManager.get_logger(self.client_id, self.log_dir)
 
     def get_parameters(self, config):
         return []
