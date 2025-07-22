@@ -1,6 +1,36 @@
 
 # Documentation Note
 
+## Requirements
+
+### Set up the environment
+
+```bash
+pip install -r requirements.txt
+```
+
+### Download Plink
+
+```bash
+wget https://www.cog-genomics.org/plink/download/plink2.zip
+unzip plink2.zip
+```
+
+## Run the Pipeline
+
+### CLient Side
+
+```bash
+source venv/bin/activate
+python main_client.py
+```
+
+### Server Side
+
+```bash
+source venv/bin/activate
+python main_server.py
+```
 
 ## Workflow Sequence Diagram
 
