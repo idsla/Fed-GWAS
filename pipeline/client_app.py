@@ -45,17 +45,21 @@ class FedLRClient(BaseGWASClient):
         if os.path.exists(loader.intermediate_dir):
             shutil.rmtree(loader.intermediate_dir)
         os.makedirs(loader.intermediate_dir, exist_ok=True)
+        
         if os.path.exists(loader.log_dir):
             shutil.rmtree(loader.log_dir)
         os.makedirs(loader.log_dir, exist_ok=True)
         
+        print('makedir successful')
+        
         # transform_data() returns the PLINK dataset prefix (e.g., "data/client_data")
         plink_prefix = loader.transform_data()
-        client_id = f"client_{uuid.uuid4().hex[:6]}"
+        client_id = "client_" + str(partition_id)
+        print(plink_prefix, client_id)
         
         super().__init__(
             plink_prefix, 
-            client_id='client_' + str(partition_id), 
+            client_id=client_id, 
             partition_by=partition_by, 
             log_dir=loader.log_dir
         )

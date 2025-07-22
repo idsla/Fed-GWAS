@@ -51,8 +51,8 @@ conda activate fedgwas
 ## PLINK
 
 - The pipeline requires [PLINK](https://www.cog-genomics.org/plink/1.9/) (version 1.9 or later).
-- Download PLINK from: https://www.cog-genomics.org/plink/1.9/
-- Place the PLINK binary (`plink` or `plink.exe`) in a directory included in your system `PATH`, or specify its path in your scripts if needed.
+- Download PLINK from: https://www.cog-genomics.org/plink/1.9/ based on your operating system.
+- Place the PLINK binary (`plink` or `plink.exe`) in `bin` folder of the project.
 
 ---
 

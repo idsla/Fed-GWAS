@@ -32,6 +32,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         self,
         min_fit_clients=1,
         min_available_clients=2,
+        output_dir=None,
         **kwargs
     ):
         super().__init__(
@@ -60,7 +61,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         # PRG-MASKING aggregator
         self.prg_aggregator = create_prg_masking_aggregator(self.num_clients)
         self.connected_clients = set()
-        self.output_dir = "./pipeline/src/server/server_intermediate"  # Set your desired output directory
+        self.output_dir = output_dir + "server_intermediate/"
         os.makedirs(self.output_dir, exist_ok=True)
 
     def current_stage_config(self):

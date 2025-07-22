@@ -9,7 +9,7 @@ class DataLoader:
     
     def __init__(
         self, 
-        config_file="config.yaml"
+        config_file: str
     ):
         
         with open(config_file, "r") as f:
@@ -42,7 +42,7 @@ class DataLoader:
         elif self.input_type.lower() == "vcf":
             out_prefix = f"{self.intermediate_dir}/converted_data"
             cmd = [
-                "plink",
+                "./bin/plink",
                 "--vcf", self.input_path,
                 "--make-bed",
                 "--out", out_prefix

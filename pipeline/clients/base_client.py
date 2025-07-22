@@ -127,10 +127,16 @@ class BaseGWASClient(fl.client.NumPyClient):
     Base client containing shared attributes & methods.
     Specific stages (QC, iterative LR, etc.) can be implemented in separate modules
     and imported into the final client class.
+    
+    Attributes:
+        plink_prefix (str): Path to the PLINK dataset prefix (e.g., "data/client_data")
+        client_id (str): Unique identifier for the client
+        partition_by (str): How to partition the data ("samples", "snps", or "both")
+        log_dir (str): Directory for storing logs
     """
     def __init__(
         self, 
-        plink_prefix, 
+        plink_prefix: str, 
         client_id="client", 
         partition_by="samples", 
         log_dir="logs"
