@@ -3,22 +3,47 @@
 This repository implements a federated pipeline for Genome-Wide Association Studies (GWAS) using Flower, PLINK, and custom privacy-preserving protocols. The pipeline supports multi-stage, multi-client GWAS with robust output management, reproducibility, and clear logging.
 
 ---
-
 ## Environment Setup
 
-### 1. Create and Activate a Conda Environment
+### Option 1: Using UV to manage the environment (recommended)
+
+Install uv: https://docs.astral.sh/uv/
+```bash
+pip install uv
+# or
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+```bash
+uv sync --python 3.11.13
+```
+
+Or create a virtual environment and then sync dependencies:
+
+```bash
+uv venv --python 3.11.13 # or simply uv venv
+# Linux/Mac
+source .venv/bin/activate
+# Windows PowerShell
+.venv\Scripts\activate
+
+# Install dependencies
+uv sync
+# optional: install dev dependencies
+uv sync --dev
+```
+
+For adding new packages:
+```bash
+uv add <package_name>
+```
+
+### Option 2: Conda Environment
 We recommend [Miniconda](https://docs.conda.io/en/latest/miniconda/) or [Anaconda](https://www.anaconda.com/products/distribution) to manage your Python environment.
 
 ```bash
 conda create -n fedgwas python=3.11 -y
 conda activate fedgwas
-```
-
-Install Poetry
-```bash
-# Install peotry - in git bash
-pipx install poetry
-pipx ensurepath
 ```
 
 #### Key Fields
