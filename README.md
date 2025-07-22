@@ -58,18 +58,30 @@ conda activate fedgwas
 
 ## Pipeline Running Instruction (Simulation Mode)
 
-### Data & Configuration
+### Data & Configuration Organization
 
-#### Configuration: `config.yaml`
-
-Configuration file specifies the paths and settings for that center are organized in `configs` folder as follows:
+Data and configuration are organized in `centers/center_xx/` folder. Detailed structure is as follows:
 ```
-configs/
+centers/
 ├── center_1/
+    ├── config.yaml
+    ├── data/
+    │   ├── center_1.bed
+    │   ├── center_1.bim
+    │   ├── center_1.fam
+    ├── logs/
+    ├── intermediate/
 ├── center_2/
+    ├── config.yaml
+    ├── data/
+    │   ├── center_2.bed
+    │   ├── center_2.bim
+    │   ├── center_2.fam
+    ├── logs/
 ├── ...
 ```
-Configuration file for each center contains the following fields:
+
+Configuration file `config.yaml` for each center contains the following fields:
 - `input_data.path`: Path to the input genotype data (PLINK prefix or VCF file).
 - `output.intermediate_dir`: Directory for intermediate files (per client, auto-cleared each run).
 - `output.log_dir`: Directory for logs (per client, auto-cleared each run).
@@ -77,29 +89,14 @@ Configuration file for each center contains the following fields:
 - `thresholds`: QC and association thresholds.
 - `flower`: Federated server address and rounds.
 
-#### Data: Simulated Data for each center
+For data, the simulated genotype data is generated and partitioned for each center (client) in the federated pipeline, see `prd/README_synthetic_data.md`. Each center has its own data directory and config file and the data format is PLINK .bed/.bim/.fam.
 
-Data in simulation mode is orgnanized in `simulated_data` folder as follows:
-
-- Simulated genotype data is generated and partitioned for each center (client) in the federated pipeline, see `prd/README_synthetic_data.md`
-- For each center, you will have a directory such as `simulated_data/tiny/center_{center_id}/` containing:
-  - The PLINK files for that center (e.g., `tiny_center_1.bed`, `.bim`, `.fam`)
-- Example directory structure for two centers:
-  ```
-  pipeline/src/simulated_data/simulated_data/tiny/center_1/
-    ├── tiny_center_1.bed
-    ├── tiny_center_1.bim
-    ├── tiny_center_1.fam
-    ├── config.yaml
-  pipeline/src/simulated_data/simulated_data/tiny/center_2/
-    ├── tiny_center_2.bed
-    ├── tiny_center_2.bim
-    ├── tiny_center_2.fam
-    ├── config.yaml
-  ```
-- Each client runs with its own config and data, and outputs are written to per-client `intermediate` and `logs` directories.
+Each client runs with its own config and data, and outputs are written to per-client `intermediate` and `logs` directories.
 
 ### Client Configuration (`config.yaml`)
+
+We have put the config template in `configs/config_template.yaml`, you can copy it to `centers/center_xx/config.yaml` and modify the paths and parameters.
+
 Use the following format for each center (client):
 ```yaml
 input_data:
@@ -140,7 +137,7 @@ participation:
   iterative_lr: true 
 ```
 
-#### Key Fields
+Key Fields in `config.yaml`
 - **input_data.path**: Path to the PLINK prefix for this center (no extension).
 - **output.intermediate_dir**: Directory for intermediate files (per client, auto-cleared each run).
 - **output.log_dir**: Directory for logs (per client, auto-cleared each run).
@@ -151,11 +148,13 @@ participation:
 
 ---
 
-### Running the Pipeline
+### How to Run the Pipeline
 
 ```bash
 flwr run . local-simulation --stream
 ```
+
+Running configurations are set in `pyproject.toml` e.g. `simulation` means running in simulation mode.
 
 ---
 
@@ -163,17 +162,22 @@ flwr run . local-simulation --stream
 
 ### Data & Configuration
 
-Put your data in `user_data` folder as follows:
+Put your data in `user_space` folder as follows:
 
 ```
-user_data/
-├── tiny.bed
-├── tiny.bim
-├── tiny.fam
-├── ....
+user_space/
+├── config.yaml
+├── data/
+│   ├── center_1.bed
+│   ├── center_1.bim
+│   ├── center_1.fam
+├── logs/
+├── intermediate/
+├── ...
 ```
 
-Modify the `config.yaml` in `configs` folder as follows:
+Copy the `configs/config_template.yaml` to `user_space/config.yaml` and modify the paths and parameters.
+
 ```yaml
 input_data:
   path: "user_data/tiny.bed"
