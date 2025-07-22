@@ -5,6 +5,8 @@ import logging
 import numpy as np
 import sys
 import os
+from flwr.client import ClientApp
+from flwr.common import Context
 
 # Add parent directory to path for server imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,10 +28,17 @@ import os
 import uuid
 
 class FedLRClient(BaseGWASClient):
-    def __init__(self, config_file="config.yaml", partition_by="samples"):
+    
+    def __init__(
+        self, 
+        partition_id,
+        config_file="config.yaml", 
+        partition_by="samples"
+    ):
         
         # Use DataLoader to load configuration and transform data if necessary
         loader = DataLoader(config_file)
+        print(loader)
         
         # Clear intermediate and log directories at the start of each run
         import shutil
@@ -43,25 +52,36 @@ class FedLRClient(BaseGWASClient):
         # transform_data() returns the PLINK dataset prefix (e.g., "data/client_data")
         plink_prefix = loader.transform_data()
         client_id = f"client_{uuid.uuid4().hex[:6]}"
-        super().__init__(plink_prefix, client_id=client_id, partition_by=partition_by, log_dir=loader.log_dir)
+        
+        super().__init__(
+            plink_prefix, 
+            client_id='client_' + str(partition_id), 
+            partition_by=partition_by, 
+            log_dir=loader.log_dir
+        )
+        
         self.intermediate_dir = loader.intermediate_dir
         self.log_dir = loader.log_dir
 
-        # super().__init__(plink_prefix, client_id="client_1", partition_by=partition_by)
         # Overwrite thresholds from config loaded via DataLoader
         thresholds = loader.get_thresholds()
         self.maf_threshold = thresholds.get("maf_threshold", 0.01)
         self.miss_threshold = thresholds.get("missing_threshold", 0.1)
         self.hwe_threshold = thresholds.get("hwe_threshold", 1e-6)
         self.p_threshold = thresholds.get("p_threshold", 5e-3)
+        
         # Flower configuration, e.g., server address and num_rounds, from DataLoader
         self.flower_config = loader.get_flower_config()
+        
         # Additional parameters from config (e.g., chunk sizes)
         self.parameters = loader.get_parameters()
+        
         # Participation flags per stage from config
         self.participation = loader.participation
+        
         # For final LR significance, if desired
         self.lr_final = {}
+        
         # For accumulating partial LR p-values
         self.lr_pvals = {}
         
@@ -252,20 +272,30 @@ class FedLRClient(BaseGWASClient):
             # default fallback
             return [], 1, {}
 
-# def main():
-#     import sys
-#     config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
-#     client = FedLRClient(config_file=config_file, partition_by="samples")
-#     fl.client.start_numpy_client(server_address="127.0.0.1:8080", client=client)
-from flwr.client import ClientApp, start_client
-from flwr.common import Context
-import sys
-
-config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
 def client_fn(context: Context):
-    return FedLRClient(config_file=config_file, partition_by="samples").to_client()
+    
+    simulation_mode = context.run_config.get('simulation', False)
+    partition_id = context.node_config["partition-id"]
+    num_partitions = context.node_config["num-partitions"]
+    print("="*100)
+    print(partition_id, num_partitions)
+    print("="*100)
+    
+    if simulation_mode:
+        config_file_path = 'configs/center_' + str(partition_id+1) + '/config.yaml'
+        
+    else:
+        config_file_path = 'configs/config.yaml'
+    
+    default_partition_by = context.run_config["default-partition-by"]
+    partition_by = context.node_config.get("partition_by", default_partition_by)
+    
+    return FedLRClient(
+        partition_id=partition_id,
+        config_file=config_file_path, 
+        partition_by=partition_by
+    ).to_client()
 
 app = ClientApp(client_fn)
-start_client(app)
     
     

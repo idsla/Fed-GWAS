@@ -23,11 +23,17 @@ from pipeline.server.strategy import FederatedGWASStrategy
 
 
 def server_fn(context: Context):
+    
+    print(context.run_config, context.node_config)
+    
+    num_rounds = context.run_config["num-server-rounds"]
+    
     strategy = FederatedGWASStrategy(
         min_fit_clients=1,
         min_available_clients=2,
     )
-    config = ServerConfig(num_rounds=50)
+    
+    config = ServerConfig(num_rounds=num_rounds)
     return ServerAppComponents(config=config, strategy=strategy)
 
 

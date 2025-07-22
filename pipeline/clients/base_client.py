@@ -128,7 +128,14 @@ class BaseGWASClient(fl.client.NumPyClient):
     Specific stages (QC, iterative LR, etc.) can be implemented in separate modules
     and imported into the final client class.
     """
-    def __init__(self, plink_prefix, client_id="client", partition_by="samples", log_dir="logs"):
+    def __init__(
+        self, 
+        plink_prefix, 
+        client_id="client", 
+        partition_by="samples", 
+        log_dir="logs"
+    ):
+        
         self.plink_prefix = plink_prefix
         self.client_id = client_id
         self.partition_by = partition_by
@@ -154,6 +161,7 @@ class BaseGWASClient(fl.client.NumPyClient):
         log_path = os.path.join(self.log_dir, "iteration_log.txt")
         self.logger = logging.getLogger(f"client_{self.client_id}")
         self.logger.setLevel(logging.INFO)
+        
         # Remove any existing handlers (avoid duplicate logs)
         self.logger.handlers = []
         file_handler = logging.FileHandler(log_path)

@@ -6,15 +6,22 @@ import subprocess
 import logging
 
 class DataLoader:
-    def __init__(self, config_file="config.yaml"):
+    
+    def __init__(
+        self, 
+        config_file="config.yaml"
+    ):
+        
         with open(config_file, "r") as f:
             self.config = yaml.safe_load(f)
+        
         self.input_path = self.config["input_data"]["path"]
         self.input_type = self.config["input_data"].get("type", "bed")
         self.intermediate_dir = self.config["output"].get("intermediate_dir", "intermediate")
         self.log_dir = self.config["output"].get("log_dir", "logs")
         self.thresholds = self.config.get("thresholds", {})
         self.parameters = self.config.get("parameters", {})
+        
         # Participation flags for each pipeline stage
         self.participation = self.config.get("participation", {})
 
@@ -64,3 +71,15 @@ class DataLoader:
         Return the participation flags dict indicating which stages the client participates in.
         """
         return self.participation
+    
+    def __str__(self):
+        data_loader_desc = "DataLoader Object:\n"
+        data_loader_desc += f"  Input Path: {self.input_path} Input Type: {self.input_type}\n"
+        data_loader_desc += f"  Intermediate Dir: {self.intermediate_dir}\n"
+        data_loader_desc += f"  Log Dir: {self.log_dir}\n"
+        data_loader_desc += f"  Thresholds: {self.thresholds}\n"
+        data_loader_desc += f"  Parameters: {self.parameters}\n"
+        data_loader_desc += f"  Participation: {self.participation}\n"
+        data_loader_desc += f"  Flower Config: {self.flower_config}\n"
+        return data_loader_desc
+

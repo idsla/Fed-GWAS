@@ -46,23 +46,44 @@ conda create -n fedgwas python=3.11 -y
 conda activate fedgwas
 ```
 
-#### Key Fields
-- **input_data.path**: Path to the input genotype data (PLINK prefix or VCF file).
-- **output.intermediate_dir**: Directory for intermediate files (per client, auto-cleared each run).
-- **output.log_dir**: Directory for logs (per client, auto-cleared each run).
-- **parameters**: Chunking and anonymization settings.
-- **thresholds**: QC and association thresholds.
-- **flower**: Federated server address and rounds.
+---
+
+## PLINK
+
+- The pipeline requires [PLINK](https://www.cog-genomics.org/plink/1.9/) (version 1.9 or later).
+- Download PLINK from: https://www.cog-genomics.org/plink/1.9/
+- Place the PLINK binary (`plink` or `plink.exe`) in a directory included in your system `PATH`, or specify its path in your scripts if needed.
 
 ---
 
-## Data & Configuration
+## Pipeline Running Instruction (Simulation Mode)
 
-### Data: Using Simulated Data for Each Center
-- Simulated genotype data is generated and partitioned for each center (client) in the federated pipeline, see `pipeline/src/simulated_data/README_synthetic_data.md`
-- For each center, you will have a directory such as `pipeline/src/simulated_data/simulated_data/tiny/center_1/` containing:
+### Data & Configuration
+
+#### Configuration: `config.yaml`
+
+Configuration file specifies the paths and settings for that center are organized in `configs` folder as follows:
+```
+configs/
+├── center_1/
+├── center_2/
+├── ...
+```
+Configuration file for each center contains the following fields:
+- `input_data.path`: Path to the input genotype data (PLINK prefix or VCF file).
+- `output.intermediate_dir`: Directory for intermediate files (per client, auto-cleared each run).
+- `output.log_dir`: Directory for logs (per client, auto-cleared each run).
+- `parameters`: Chunking and anonymization settings.
+- `thresholds`: QC and association thresholds.
+- `flower`: Federated server address and rounds.
+
+#### Data: Simulated Data for each center
+
+Data in simulation mode is orgnanized in `simulated_data` folder as follows:
+
+- Simulated genotype data is generated and partitioned for each center (client) in the federated pipeline, see `prd/README_synthetic_data.md`
+- For each center, you will have a directory such as `simulated_data/tiny/center_{center_id}/` containing:
   - The PLINK files for that center (e.g., `tiny_center_1.bed`, `.bim`, `.fam`)
-  - A `config.yaml` file specifying the paths and settings for that center
 - Example directory structure for two centers:
   ```
   pipeline/src/simulated_data/simulated_data/tiny/center_1/
@@ -130,22 +151,40 @@ participation:
 
 ---
 
-## Running the Pipeline (Simulation)
-
-```bash
-python main_simulation.py --num-clients 2
-```
-or using flwr cli
+### Running the Pipeline
 
 ```bash
 flwr run . local-simulation --stream
 ```
 
-## Running the Pipeline (Deployment)
+---
 
-### Lauch Flower Federation
+## Pipeline Running Instruction (Deployment Mode)
 
-#### 1. Start the Server Node in one terminal window
+### Data & Configuration
+
+Put your data in `user_data` folder as follows:
+
+```
+user_data/
+├── tiny.bed
+├── tiny.bim
+├── tiny.fam
+├── ....
+```
+
+Modify the `config.yaml` in `configs` folder as follows:
+```yaml
+input_data:
+  path: "user_data/tiny.bed"
+  type: "bed"
+```
+
+### Running the Pipeline
+
+#### 1. Lauch Flower Federation
+
+##### 1.1 Start the Server Node in one terminal window
 ```bash
 $ flower-superlink --insecure
 ```
@@ -158,7 +197,7 @@ flower-supernode \
      --insecure \
      --superlink 127.0.0.1:9092 \
      --clientappio-api-address 127.0.0.1:9094 \
-     --node-config "pipeline/simulated_data/simulated_data/tiny/center_1/config.yaml"
+     --node-config "partition-id=0 num-partitions=2 config-file=configs/center_1/config.yaml"
 ```
 
 Initialize client 2
@@ -167,7 +206,7 @@ flower-supernode \
      --insecure \
      --superlink 127.0.0.1:9092 \
      --clientappio-api-address 127.0.0.1:9095 \
-     --node-config "pipeline/simulated_data/simulated_data/tiny/center_2/config.yaml"
+     --node-config "partition-id=1 num-partitions=2 config-file=configs/center_2/config.yaml"
 ```
 
 - Each client will generate a new unique client ID on each run.
@@ -228,23 +267,6 @@ flower-supernode \
 9. **Init Chunks (LR)**: Server sends global seed, clients re-partition for final LR.
 10. **Iterative LR**: Clients process LR chunks, send results.
 11. **Complete**: Workflow finished, results processed.
-
-### Diagrams
-
-#### Sequence Diagram
-```mermaid
-sequenceDiagram
-    participant C1 as Client 1
-    participant C2 as Client 2
-    participant S as Server
-    ...
-```
-
-#### Swimlane Diagram
-```mermaid
-flowchart TD
-    ...
-```
 
 ---
 

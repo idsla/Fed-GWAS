@@ -12,7 +12,9 @@ dist/
 sdist/
 **/__pycache__/
 
-# Added by Claude Task Master
+# Data
+user_data/
+
 # Logs
 logs
 npm-debug.log*

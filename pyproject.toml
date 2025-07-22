@@ -44,8 +44,14 @@ publisher = "flower"
 serverapp = "pipeline.server_app:app"
 clientapp = "pipeline.client_app:app"
 
+[tool.flwr.app.config]
+simulation = true
+num-server-rounds = 1
+default-partition-by = "samples"
+
 [tool.flwr.federations]
 default = "local-simulation"
+options.num-supernodes = 2
 
 [tool.flwr.federations.local-simulation]
 options.num-supernodes = 2
