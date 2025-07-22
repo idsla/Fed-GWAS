@@ -367,6 +367,7 @@ def start_server(selected_methods):
         hwe_results_df.to_csv(output_file, index=False)
         logging.info(f"HWE results saved to {output_file}")
         hwe_results_df.head()
+    
     # Start the server
     strategy = QCServerStrategy()
     fl.server.start_server(

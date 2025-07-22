@@ -1,0 +1,87 @@
+2025-06-22 22:12:01,092 DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+2025-06-22 22:12:01,092 DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+2025-06-22 22:12:01,098 Opened insecure gRPC connection (no certificates were passed)
+2025-06-22 22:12:01,099 ChannelConnectivity.IDLE
+2025-06-22 22:12:01,100 ChannelConnectivity.CONNECTING
+2025-06-22 22:12:03,134 ChannelConnectivity.TRANSIENT_FAILURE
+2025-06-22 22:12:03,348 gRPC channel closed
+2025-06-22 22:14:54,088 DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+2025-06-22 22:14:54,104 Opened insecure gRPC connection (no certificates were passed)
+2025-06-22 22:14:54,104 ChannelConnectivity.IDLE
+2025-06-22 22:14:54,104 ChannelConnectivity.CONNECTING
+2025-06-22 22:14:56,123 ChannelConnectivity.TRANSIENT_FAILURE
+2025-06-22 22:14:56,324 gRPC channel closed
+2025-06-22 22:28:02,352 DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+2025-06-22 22:28:02,358 Opened insecure gRPC connection (no certificates were passed)
+2025-06-22 22:28:02,359 ChannelConnectivity.IDLE
+2025-06-22 22:28:02,360 ChannelConnectivity.CONNECTING
+2025-06-22 22:28:04,407 ChannelConnectivity.TRANSIENT_FAILURE
+2025-06-22 22:28:04,621 gRPC channel closed
+2025-06-22 22:30:25,682 DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+2025-06-22 22:30:25,687 Opened insecure gRPC connection (no certificates were passed)
+2025-06-22 22:30:25,688 ChannelConnectivity.IDLE
+2025-06-22 22:30:25,688 ChannelConnectivity.CONNECTING
+2025-06-22 22:30:25,689 ChannelConnectivity.READY
+2025-06-22 22:30:25,690 
+2025-06-22 22:30:25,690 Received: get_parameters message 654854e9-8b3d-48e5-b9fd-88528844e710
+2025-06-22 22:30:25,691 Sent reply
+2025-06-22 22:31:44,070 gRPC channel closed

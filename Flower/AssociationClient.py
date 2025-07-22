@@ -11,6 +11,7 @@ NUM_ITERATIONS_PHASE2 = 5  # Number of iterations to share data
 SAMPLE_SIZE = 50  # Number of samples to send to the server in each iteration
 
 class GWASClient(fl.client.NumPyClient):
+    
     def __init__(self, bed, fam, bim):
         self.bed_path = bed
         self.fam_path = fam
