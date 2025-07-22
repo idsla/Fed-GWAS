@@ -140,18 +140,54 @@ participation:
 
 ## Running the Pipeline
 
-### 1. Start the Server
+### 1. Start the Server in one terminal window
 ```bash
-python -m pipeline.main_server
+$ flower-superlink --insecure
 ```
 
-### 2. Start Each Client
+### 2. Start each Client in a separate terminal window, client config are in `pipeline/simulated_data/simulated_data/tiny/center_xx/config.yaml`, noted that at least two clients are required.
+
+Initialize client 1
 ```bash
-# Edit config.yaml as needed for each client
-python -m pipeline.main_client pipeline/src/simulated_data/simulated_data/tiny/center_1/config.yaml
+flower-supernode \
+     --insecure \
+     --superlink 127.0.0.1:9092 \
+     --clientappio-api-address 127.0.0.1:9094 \
+     pipeline/simulated_data/simulated_data/tiny/center_1/config.yaml
 ```
+
+Initialize client 2
+```bash
+flower-supernode \
+     --insecure \
+     --superlink 127.0.0.1:9092 \
+     --clientappio-api-address 127.0.0.1:9095 \
+     pipeline/simulated_data/simulated_data/tiny/center_2/config.yaml
+```
+
 - Each client will generate a new unique client ID on each run.
 - All outputs and logs will be stored in the specified directories, which are cleared at the start of each run.
+
+### Certificate and HTTP SSL Communication
+
+```bash
+flower-superlink \
+    --ssl-ca-certfile <your-ca-cert-filepath> \
+    --ssl-certfile <your-server-cert-filepath> \
+    --ssl-keyfile <your-privatekey-filepath>
+
+flower-supernode \
+     --superlink 127.0.0.1:9092 \
+     --clientappio-api-address 127.0.0.1:9094 \
+     --root-certificates <your-ca-cert-filepath> \
+     <other-args>
+
+flower-supernode \
+     --superlink 127.0.0.1:9092 \
+     --clientappio-api-address 127.0.0.1:9095 \
+     --root-certificates <your-ca-cert-filepath> \
+     <other-args>
+```
 
 ---
 

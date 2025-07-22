@@ -250,11 +250,22 @@ class FedLRClient(BaseGWASClient):
             # default fallback
             return [], 1, {}
 
-def main():
-    import sys
-    config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
-    client = FedLRClient(config_file=config_file, partition_by="samples")
-    fl.client.start_numpy_client(server_address="127.0.0.1:8080", client=client)
+# def main():
+#     import sys
+#     config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
+#     client = FedLRClient(config_file=config_file, partition_by="samples")
+#     fl.client.start_numpy_client(server_address="127.0.0.1:8080", client=client)
 
 if __name__ == "__main__":
-    main()
+    from flwr.client import ClientApp, start_client
+    from flwr.common import Context
+    import sys
+    
+    config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
+    def client_fn(context: Context):
+        return FedLRClient(config_file=config_file, partition_by="samples").to_client()
+    
+    app = ClientApp(client_fn)
+    start_client(app)
+    
+    
