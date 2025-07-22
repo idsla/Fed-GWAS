@@ -151,7 +151,9 @@ class FedLRClient(BaseGWASClient):
             local_mind_threshold = config.get("local_mind_threshold", 0.1)
             self.logger.info(f"[Client {self.client_id}] Stage: local_qc (mind={local_mind_threshold})")
             # Exclude samples with missing rate > local_mind_threshold
-            new_prefix = exclude_samples_by_missing_rate(self.plink_prefix, local_mind_threshold, log_dir=self.log_dir)
+            new_prefix = exclude_samples_by_missing_rate(
+                self.plink_prefix, local_mind_threshold, log_dir=self.log_dir
+            )
             self.plink_prefix = new_prefix
             self.logger.info(f"[Client {self.client_id}] Local QC done => new prefix {self.plink_prefix}")
             return [], 1, {}
@@ -171,8 +173,12 @@ class FedLRClient(BaseGWASClient):
                 self.masking_helper.compute_shared_secrets(all_public_keys, curve_params or config)
             
             # Compute local QC arrays
-            counts_array = compute_genotype_counts(self.plink_prefix, self.client_id, log_dir=self.log_dir)
-            missing_array = compute_missingness_counts(self.plink_prefix, self.client_id, log_dir=self.log_dir)
+            counts_array = compute_genotype_counts(
+                self.plink_prefix, self.client_id, log_dir=self.log_dir
+            )
+            missing_array = compute_missingness_counts(
+                self.plink_prefix, self.client_id, log_dir=self.log_dir
+            )
             maf_thresh = config.get("maf_threshold", 0.01)
             miss_thresh = config.get("missing_threshold", 0.1)
             hwe_thresh = config.get("hwe_threshold", 1e-6)
@@ -249,7 +255,9 @@ class FedLRClient(BaseGWASClient):
                 intersection_snps = intersection_str.split()
                 self.logger.info(f"[Client {self.client_id}] Received intersection of {len(intersection_snps)} SNPs from server")
                 if intersection_snps:
-                    new_prefix = exclude_snps(self.plink_prefix, intersection_snps, "lr_filtered", log_dir=self.log_dir)
+                    new_prefix = exclude_snps(
+                        self.plink_prefix, intersection_snps, "lr_filtered", log_dir=self.log_dir
+                    )
                     self.plink_prefix = new_prefix
             return [], 1, {}
 
@@ -282,7 +290,7 @@ def client_fn(context: Context):
     print("="*100)
     
     if simulation_mode:
-        config_file_path = 'configs/center_' + str(partition_id+1) + '/config.yaml'
+        config_file_path = 'centers/center_' + str(partition_id+1) + '/config.yaml'
         
     else:
         config_file_path = 'configs/config.yaml'

@@ -1,10 +1,10 @@
 input_data:
-  path: "simulated_data/tiny/center_2"
+  path: "centers/center_1/data/tiny_center_1"
   type: "bed"
 
 output:
-  intermediate_dir: "simulated_data/tiny/center_2/intermediate" # all the intermediate data files such as chunks
-  log_dir: "simulated_data/tiny/center_2/logs" # all the intermediate results files such as logs, plink output files
+  intermediate_dir: "centers/center_1/intermediate" # all the intermediate data files such as chunks
+  log_dir: "centers/center_1/logs" # all the intermediate results files such as logs, plink output files
 
 parameters:
   sample_offset: 1000000000000
