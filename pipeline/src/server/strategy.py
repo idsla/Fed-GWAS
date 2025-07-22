@@ -2,11 +2,12 @@
 
 import numpy as np
 import flwr as fl
+import os
 
-from aggregator_qc import aggregate_global_qc
-from aggregator_king import run_server_king
-from aggregator_lr import run_server_lr, merge_insign_snp_sets
-from prg_masking import create_prg_masking_aggregator
+from pipeline.src.server.aggregator_qc import aggregate_global_qc
+from pipeline.src.server.aggregator_king import run_server_king
+from pipeline.src.server.aggregator_lr import run_server_lr, merge_insign_snp_sets
+from pipeline.src.server.prg_masking import create_prg_masking_aggregator
 from flwr.common import parameters_to_ndarrays
 import logging
 
@@ -50,7 +51,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         self.global_seed = 0
         self.current_stage = "key_exchange"  # Start with key exchange
         self.chunk_size = 1000
-        self.num_clients = 3   # TODO: need to check with Sonam for how to specify this parameter
+        self.num_clients = None   # Will be set dynamically
 
         self.global_exclusion = []
         self.lr_data = {}
@@ -58,6 +59,9 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         
         # PRG-MASKING aggregator
         self.prg_aggregator = create_prg_masking_aggregator(self.num_clients)
+        self.connected_clients = set()
+        self.output_dir = "./pipeline/src/server/server_intermediate"  # Set your desired output directory
+        os.makedirs(self.output_dir, exist_ok=True)
 
     def current_stage_config(self):
         return {"stage": self.current_stage}
@@ -140,7 +144,17 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         return config
 
     def aggregate_fit(self, rnd: int, results, failures):
-        
+        # Track connected clients
+        for client_proxy, _ in results:
+            client_id = getattr(client_proxy, "cid", str(client_proxy))
+            self.connected_clients.add(client_id)
+        # Dynamically set num_clients and update prg_aggregator
+        if self.num_clients is None:
+            self.num_clients = len(self.connected_clients)
+            if hasattr(self.prg_aggregator, 'num_clients'):
+                self.prg_aggregator.num_clients = self.num_clients
+            print(f"[Server] Detected {self.num_clients} unique clients: {self.connected_clients}")
+
         # Record participants for this stage
         self.participants_per_stage[self.current_stage] = set(cid for cid, _ in results)
 
@@ -165,15 +179,17 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
             
             # Collect public keys from clients
             print(f"[Server] Collecting public keys from {len(results)} clients...")
-            for cid, fit_res in results:
+            for client_proxy, fit_res in results:
                 if fit_res.parameters:
                     ndarrays = parameters_to_ndarrays(fit_res.parameters)
                     
                     # Public key is sent as uint8 array, convert back to string
                     public_key_bytes = ndarrays[0].tobytes()
                     public_key_str = public_key_bytes.decode('utf-8')
-                    self.prg_aggregator.add_client_public_key(int(cid), public_key_str)
-                    print(f"  > Received public key from client {cid}")
+                    # Extract the client id string from the proxy
+                    client_id = getattr(client_proxy, "cid", str(client_proxy))
+                    self.prg_aggregator.add_client_public_key(client_id, public_key_str)
+                    print(f"  > Received public key from client {client_id}")
             
             # Check if we can proceed to sync stage
             if self.prg_aggregator.is_key_exchange_complete():
@@ -255,7 +271,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         elif self.current_stage == "iterative_king":
             for _, fit_res in results:
                 if fit_res.parameters:
-                    run_server_king(self, fit_res.parameters)
+                    run_server_king(self, fit_res.parameters, output_dir=self.output_dir)
             self.current_stage = "local_lr"
             return [], {}
 
@@ -299,7 +315,7 @@ class FederatedGWASStrategy(fl.server.strategy.FedAvg):
         elif self.current_stage == "iterative_lr":
             for _, fit_res in results:
                 if fit_res.parameters:
-                    run_server_lr(self, fit_res.parameters)
+                    run_server_lr(self, fit_res.parameters, output_dir=self.output_dir)
             self.current_stage = "done"
             return [], {}
 

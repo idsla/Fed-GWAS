@@ -1,5 +1,129 @@
+# Federated GWAS Pipeline
 
-# Documentation Note
+This repository implements a federated pipeline for Genome-Wide Association Studies (GWAS) using a combination of local processing and iterative outsourcing. The project is divided into two main directories: client/ and server/.
+
+---
+
+## Environment Setup
+
+### 1. Create and Activate a Conda Environment
+
+We recommend using [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/products/distribution) to manage your Python environment.
+
+```bash
+conda create -n fedgwas python=3.11 -y
+conda activate fedgwas
+```
+
+### 2. Install Poetry and Project Dependencies
+- Install Poetry (if not already installed):
+  ```bash
+  pip install poetry
+  ```
+- Install all required packages:
+  ```bash
+  poetry install
+  ```
+
+### 3. (Optional) Install PLINK
+- Download [PLINK 1.9+](https://www.cog-genomics.org/plink/1.9/).
+- Place the `plink` binary in your `PATH` or specify its location in your scripts.
+
+---
+
+## PLINK
+
+- The pipeline requires [PLINK](https://www.cog-genomics.org/plink/1.9/) (version 1.9 or later).
+- Download PLINK from: https://www.cog-genomics.org/plink/1.9/
+- Place the PLINK binary (`plink` or `plink.exe`) in a directory included in your system `PATH`, or specify its path in your scripts if needed.
+
+---
+
+## Data
+
+- Place your input genotype data (PLINK .bed/.bim/.fam or VCF files) in a directory such as `data/client_data/`.
+- Example data can be downloaded from [PLINK test data](https://www.cog-genomics.org/plink/1.9/resources#test).
+- Each client should have its own data directory.
+
+---
+
+## Client Configuration (`config.yaml`)
+
+Example (`pipeline/src/clients/config.yaml`):
+```yaml
+input_data:
+  path: "data/client_data"   # Path to PLINK data (without extension) or VCF file etc.
+  type: "bed"               # "bed" or "vcf"
+
+output:
+  intermediate_dir: "intermediate"
+  log_dir: "logs"
+
+parameters:
+  sample_offset: 1000000000000   # if not provided by DataLoader, default offset
+  chunk_size: 100                # default chunk size (by samples or SNPs)
+  sample_chunk_size: 100
+  snp_chunk_size: 100
+
+thresholds:
+  maf_threshold: 0.01
+  missing_threshold: 0.1
+  hwe_threshold: 1e-6
+  p_threshold: 1e-3
+
+flower:
+  server_address: "127.0.0.1:8080"
+  num_rounds: 10
+```
+
+### Field Descriptions
+- **input_data.path**: Path to the input genotype data (PLINK prefix or VCF file).
+- **input_data.type**: File type, either `bed` or `vcf`.
+- **output.intermediate_dir**: Directory for intermediate files.
+- **output.log_dir**: Directory for logs.
+- **parameters.sample_offset**: Offset for anonymizing sample IDs.
+- **parameters.chunk_size**: Default chunk size for partitioning.
+- **parameters.sample_chunk_size**: Chunk size for sample-based partitioning.
+- **parameters.snp_chunk_size**: Chunk size for SNP-based partitioning.
+- **thresholds.maf_threshold**: Minimum minor allele frequency.
+- **thresholds.missing_threshold**: Maximum missing rate.
+- **thresholds.hwe_threshold**: Minimum HWE p-value.
+- **thresholds.p_threshold**: P-value threshold for local LR.
+- **flower.server_address**: Address of the Flower server.
+- **flower.num_rounds**: Number of federated rounds.
+
+---
+
+## Master Configuration
+- The pipeline currently uses per-client configuration files. If a master configuration is needed, it should specify global parameters and reference each client’s config.
+
+---
+
+## Running Instructions
+
+### 1. Start the Server
+```bash
+cd pipeline/src/server
+python main_server.py
+```
+
+### 2. Start Each Client
+```bash
+cd pipeline/src/clients
+# Edit config.yaml as needed for each client
+python main_client.py
+```
+
+---
+
+## Results
+- Intermediate and final results are stored in the directories specified in each client’s `config.yaml` (`intermediate_dir`, `log_dir`).
+- Server-side results (aggregated QC, kinship, association) are stored in the server’s working directory.
+- Check logs and output directories for detailed results and logs of each stage.
+
+---
+
+# Pipeline Details
 
 ## Requirements
 

@@ -9,9 +9,9 @@ import os
 # Add parent directory to path for server imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.clients.base_client import BaseGWASClient
-from src.server.prg_masking import create_client_masking_helper
-from src.clients.local_qc import (
+from pipeline.src.clients.base_client import BaseGWASClient
+from pipeline.src.server.prg_masking import create_client_masking_helper
+from pipeline.src.clients.local_qc import (
     compute_genotype_counts,
     compute_missingness_counts,
     run_local_lr,
@@ -19,9 +19,9 @@ from src.clients.local_qc import (
     exclude_snps,
     exclude_samples_by_missing_rate,
 )
-from src.clients.iterative_king import handle_iterative_king
-from src.clients.iterative_lr import handle_iterative_lr
-from src.clients.data_loder import DataLoader
+from pipeline.src.clients.iterative_king import handle_iterative_king
+from pipeline.src.clients.iterative_lr import handle_iterative_lr
+from pipeline.src.clients.data_loder import DataLoader
 import os
 import uuid
 
@@ -29,10 +29,21 @@ class FedLRClient(BaseGWASClient):
     def __init__(self, config_file="config.yaml", partition_by="samples"):
         # Use DataLoader to load configuration and transform data if necessary
         loader = DataLoader(config_file)
+        
+        # Clear intermediate and log directories at the start of each run
+        import shutil
+        if os.path.exists(loader.intermediate_dir):
+            shutil.rmtree(loader.intermediate_dir)
+        os.makedirs(loader.intermediate_dir, exist_ok=True)
+        if os.path.exists(loader.log_dir):
+            shutil.rmtree(loader.log_dir)
+        os.makedirs(loader.log_dir, exist_ok=True)
         # transform_data() returns the PLINK dataset prefix (e.g., "data/client_data")
         plink_prefix = loader.transform_data()
         client_id = f"client_{uuid.uuid4().hex[:6]}"
-        super().__init__(plink_prefix, client_id=client_id, partition_by=partition_by)
+        super().__init__(plink_prefix, client_id=client_id, partition_by=partition_by, log_dir=loader.log_dir)
+        self.intermediate_dir = loader.intermediate_dir
+        self.log_dir = loader.log_dir
 
        # super().__init__(plink_prefix, client_id="client_1", partition_by=partition_by)
         # Overwrite thresholds from config loaded via DataLoader
@@ -62,19 +73,19 @@ class FedLRClient(BaseGWASClient):
         
         # Exit process if this client opts out of the current stage
         if not self.participation.get(stage, True):
-            logging.info(f"[Client {self.client_id}] Exiting: not participating in stage '{stage}'")
+            self.logger.info(f"[Client {self.client_id}] Exiting: not participating in stage '{stage}'")
             sys.exit(0)
 
         # Initialize masking helper if needed
         if self.masking_helper is None:
-            client_id = int(self.client_id.split('_')[1]) if '_' in self.client_id else 0
+            client_id = self.client_id
             self.masking_helper = create_client_masking_helper(client_id, self.num_clients)
 
         ################################################################################
         # Stage 1: Key Exchange - Generate and send DH public key for secure aggregation
         ################################################################################
         if stage == "key_exchange":
-            logging.info(f"[Client {self.client_id}] Stage: key_exchange")
+            self.logger.info(f"[Client {self.client_id}] Stage: key_exchange")
             curve_params = {k: v for k, v in config.items() if k == "curve"}
             public_key_pem = self.masking_helper.generate_ecc_keypair(curve_params)
             
@@ -82,7 +93,7 @@ class FedLRClient(BaseGWASClient):
             public_key_bytes = public_key_pem.encode('utf-8')
             public_key_array = np.frombuffer(public_key_bytes, dtype=np.uint8)
             
-            logging.info(f"[Client {self.client_id}] Generated DH public key")
+            self.logger.info(f"[Client {self.client_id}] Generated DH public key")
             return [public_key_array], 1, {"message": "public_key_sent"}
         
         ################################################################################
@@ -90,7 +101,7 @@ class FedLRClient(BaseGWASClient):
         ################################################################################
         elif stage == "sync":
             
-            logging.info(f"[Client {self.client_id}] Stage: sync with PRG-MASKING")
+            self.logger.info(f"[Client {self.client_id}] Stage: sync with PRG-MASKING")
             
             # Get all public keys and compute shared secrets
             all_public_keys = config.get("all_public_keys", {})
@@ -98,7 +109,7 @@ class FedLRClient(BaseGWASClient):
             
             if not curve_params and "curve" not in config:
                 # Extract curve params from the strategy (they should be in config)
-                logging.warning(f"[Client {self.client_id}] Missing curve params in sync stage")
+                self.logger.warning(f"[Client {self.client_id}] Missing curve params in sync stage")
                 return [np.array([self.local_seed], dtype=np.float64)], 1, {}
             
             self.masking_helper.compute_shared_secrets(all_public_keys, curve_params or config)
@@ -107,7 +118,7 @@ class FedLRClient(BaseGWASClient):
             masked_seed = self.masking_helper.mask_data(self.local_seed)
             seed_array = np.array([masked_seed], dtype=np.float64)
             
-            logging.info(f"[Client {self.client_id}] Original seed: {self.local_seed}, Masked: {masked_seed}")
+            self.logger.info(f"[Client {self.client_id}] Original seed: {self.local_seed}, Masked: {masked_seed}")
             return [seed_array], 1, {}
 
         ################################################################################
@@ -116,11 +127,11 @@ class FedLRClient(BaseGWASClient):
         if stage == "local_qc":
             
             local_mind_threshold = config.get("local_mind_threshold", 0.1)
-            logging.info(f"[Client {self.client_id}] Stage: local_qc (mind={local_mind_threshold})")
+            self.logger.info(f"[Client {self.client_id}] Stage: local_qc (mind={local_mind_threshold})")
             # Exclude samples with missing rate > local_mind_threshold
-            new_prefix = exclude_samples_by_missing_rate(self.plink_prefix, local_mind_threshold)
+            new_prefix = exclude_samples_by_missing_rate(self.plink_prefix, local_mind_threshold, log_dir=self.log_dir)
             self.plink_prefix = new_prefix
-            logging.info(f"[Client {self.client_id}] Local QC done => new prefix {self.plink_prefix}")
+            self.logger.info(f"[Client {self.client_id}] Local QC done => new prefix {self.plink_prefix}")
             return [], 1, {}
 
         ################################################################################
@@ -128,7 +139,7 @@ class FedLRClient(BaseGWASClient):
         ################################################################################
         elif stage == "global_qc":
             
-            logging.info(f"[Client {self.client_id}] Stage: global_qc with PRG-MASKING")
+            self.logger.info(f"[Client {self.client_id}] Stage: global_qc with PRG-MASKING")
             
             # Get all public keys and compute shared secrets
             all_public_keys = config.get("all_public_keys", {})
@@ -138,8 +149,8 @@ class FedLRClient(BaseGWASClient):
                 self.masking_helper.compute_shared_secrets(all_public_keys, curve_params or config)
             
             # Compute local QC arrays
-            counts_array = compute_genotype_counts(self.plink_prefix, self.client_id)
-            missing_array = compute_missingness_counts(self.plink_prefix, self.client_id)
+            counts_array = compute_genotype_counts(self.plink_prefix, self.client_id, log_dir=self.log_dir)
+            missing_array = compute_missingness_counts(self.plink_prefix, self.client_id, log_dir=self.log_dir)
             maf_thresh = config.get("maf_threshold", 0.01)
             miss_thresh = config.get("missing_threshold", 0.1)
             hwe_thresh = config.get("hwe_threshold", 1e-6)
@@ -151,11 +162,11 @@ class FedLRClient(BaseGWASClient):
                 masked_missing = self.masking_helper.mask_data(missing_array)
                 masked_thresholds = self.masking_helper.mask_data(threshold_array)
                 
-                logging.info(f"[Client {self.client_id}] Applied PRG masking to QC arrays")
+                self.logger.info(f"[Client {self.client_id}] Applied PRG masking to QC arrays")
                 return [masked_counts, masked_missing, masked_thresholds], 1, {}
             else:
                 # Fallback to unmasked if no keys available
-                logging.warning(f"[Client {self.client_id}] No public keys available, sending unmasked data")
+                self.logger.warning(f"[Client {self.client_id}] No public keys available, sending unmasked data")
                 return [counts_array, missing_array, threshold_array], 1, {}
 
         ################################################################################
@@ -167,9 +178,9 @@ class FedLRClient(BaseGWASClient):
                 excluded_data = parameters[0].tobytes().decode("utf-8").split()
                 
                 # Suppose these are SNP IDs to drop; exclude them from local dataset
-                new_prefix = exclude_snps(self.plink_prefix, excluded_data, "global_filtered")
+                new_prefix = exclude_snps(self.plink_prefix, excluded_data, "global_filtered", log_dir=self.log_dir)
                 self.plink_prefix = new_prefix
-                logging.info(f"[Client {self.client_id}] Global QC filter => new prefix {self.plink_prefix}")
+                self.logger.info(f"[Client {self.client_id}] Global QC filter => new prefix {self.plink_prefix}")
             
             return [], 1, {}
 
@@ -183,7 +194,7 @@ class FedLRClient(BaseGWASClient):
             
             self.partition_data(config)
             self.current_chunk_idx = 0
-            logging.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative KING.")
+            self.logger.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative KING.")
             return [], 1, {}
 
         ################################################################################
@@ -196,15 +207,15 @@ class FedLRClient(BaseGWASClient):
         # Stage 8: Local LR - Run local logistic regression and identify insignificant SNPs
         ################################################################################
         elif stage == "local_lr":
-            logging.info(f"[Client {self.client_id}] Stage: local_lr")
+            self.logger.info(f"[Client {self.client_id}] Stage: local_lr")
             p_threshold = config.get("p_threshold", 1e-3)
-            assoc_file = run_local_lr(self.plink_prefix, out_prefix="local_lr_temp")
+            assoc_file = run_local_lr(self.plink_prefix, out_prefix="local_lr_temp", log_dir=self.log_dir)
             insign_snps = parse_insignificant_snps(assoc_file, p_threshold=p_threshold)
             # Send these 'insignificant' SNPs to the server
             joined = "\n".join(insign_snps)
             data_bytes = joined.encode("utf-8")
             data_array = np.frombuffer(data_bytes, dtype=np.uint8)
-            logging.info(f"[Client {self.client_id}] Found {len(insign_snps)} insign. SNPs locally")
+            self.logger.info(f"[Client {self.client_id}] Found {len(insign_snps)} insign. SNPs locally")
             return [data_array], 1, {}
 
         ################################################################################
@@ -214,9 +225,9 @@ class FedLRClient(BaseGWASClient):
             if len(parameters) > 0:
                 intersection_str = parameters[0].tobytes().decode("utf-8")
                 intersection_snps = intersection_str.split()
-                logging.info(f"[Client {self.client_id}] Received intersection of {len(intersection_snps)} SNPs from server")
+                self.logger.info(f"[Client {self.client_id}] Received intersection of {len(intersection_snps)} SNPs from server")
                 if intersection_snps:
-                    new_prefix = exclude_snps(self.plink_prefix, intersection_snps, "lr_filtered")
+                    new_prefix = exclude_snps(self.plink_prefix, intersection_snps, "lr_filtered", log_dir=self.log_dir)
                     self.plink_prefix = new_prefix
             return [], 1, {}
 
@@ -226,7 +237,7 @@ class FedLRClient(BaseGWASClient):
         elif stage == "init_chunks_lr":
             self.partition_data(config)
             self.current_chunk_idx = 0
-            logging.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative LR.")
+            self.logger.info(f"[Client {self.client_id}] Created {len(self.chunk_files)} chunks for iterative LR.")
             return [], 1, {}
 
         ################################################################################
@@ -240,8 +251,9 @@ class FedLRClient(BaseGWASClient):
             return [], 1, {}
 
 def main():
-    import flwr as fl
-    client = FedLRClient(config_file="config.yaml", partition_by="samples")
+    import sys
+    config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
+    client = FedLRClient(config_file=config_file, partition_by="samples")
     fl.client.start_numpy_client(server_address="127.0.0.1:8080", client=client)
 
 if __name__ == "__main__":

@@ -7,38 +7,32 @@ import uuid
 import numpy as np
 
 
-def run_server_king(server_strategy, parameters_list):
+def run_server_king(server_strategy, parameters_list, output_dir=None):
     """
-    Server-based KING aggregator:
-    1. For each parameter from clients (tar file bytes), store as a local .tar file.
-    2. Unpack each tar into a temporary directory.
-    3. Merge the resulting PLINK binary files using PLINK --bmerge.
-    4. Run PLINK --het on the merged data to compute heterozygosity (n1) for each sample.
-    5. Run PLINK --king robust on the merged dataset.
-    6. Parse the resulting KING output file (.kin0) and, for each pair, use the computed n1
-       (from the --het output for the first sample) to produce output lines of the form:
-         sampleID1_ano sampleID2_ano partial_phi n1_star
-    7. Return these lines as a numpy array of uint8 bytes to the clients.
+    Server-based KING aggregator with configurable output directory.
     """
+    if output_dir is None:
+        output_dir = getattr(server_strategy, 'output_dir', '.')
     session_id = uuid.uuid4().hex
-    os.makedirs(session_id, exist_ok=True)
-    merged_prefix = f"{session_id}/merged_king"
+    session_path = os.path.join(output_dir, session_id)
+    os.makedirs(session_path, exist_ok=True)
+    merged_prefix = f"{session_path}/merged_king"
     bed_files = []
 
     # Unpack each client's tar file and collect bed file prefixes
     for param in parameters_list:
         chunk_bytes = param.numpy.tobytes()
-        tar_path = os.path.join(session_id, f"{uuid.uuid4().hex}.tar")
+        tar_path = os.path.join(session_path, f"{uuid.uuid4().hex}.tar")
         with open(tar_path, "wb") as f:
             f.write(chunk_bytes)
         with tarfile.open(tar_path, "r") as tf:
-            tf.extractall(session_id)
+            tf.extractall(session_path)
         # Assume each tar contains files named exactly: chunk.bed, chunk.bim, chunk.fam
         chunk_uuid = uuid.uuid4().hex
-        bed_file = os.path.join(session_id, f"chunk_{chunk_uuid}")
-        os.rename(os.path.join(session_id, "chunk.bed"), f"{bed_file}.bed")
-        os.rename(os.path.join(session_id, "chunk.bim"), f"{bed_file}.bim")
-        os.rename(os.path.join(session_id, "chunk.fam"), f"{bed_file}.fam")
+        bed_file = os.path.join(session_path, f"chunk_{chunk_uuid}")
+        os.rename(os.path.join(session_path, "chunk.bed"), f"{bed_file}.bed")
+        os.rename(os.path.join(session_path, "chunk.bim"), f"{bed_file}.bim")
+        os.rename(os.path.join(session_path, "chunk.fam"), f"{bed_file}.fam")
         bed_files.append(bed_file)
         os.remove(tar_path)
 
@@ -115,7 +109,7 @@ def run_server_king(server_strategy, parameters_list):
         "plink",
         "--bfile", merged_prefix,
         "--king", "robust",
-        "--out", f"{session_id}/king_results"
+        "--out", f"{session_path}/king_results"
     ]
     try:
         subprocess.run(king_cmd, check=True)
@@ -124,7 +118,7 @@ def run_server_king(server_strategy, parameters_list):
         print(f"[Server KING] PLINK KING failed: {e}")
 
     # Parse the king_results file (.kin0)
-    kin0_file = f"{session_id}/king_results.kin0"
+    kin0_file = f"{session_path}/king_results.kin0"
     result_str = ""
     if os.path.exists(kin0_file):
         with open(kin0_file, "r") as f:
