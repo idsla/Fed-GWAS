@@ -367,7 +367,7 @@ dev = [
 requires-dist = [
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "flake8-docstrings", marker = "extra == 'dev'", specifier = ">=1.7.0" },
-    { name = "flwr", specifier = ">=1.11.1" },
+    { name = "flwr", extras = ["simlualtion"], specifier = ">=1.11.1" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.13.2" },
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.1" },

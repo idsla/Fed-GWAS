@@ -130,7 +130,18 @@ participation:
 
 ---
 
-## Running the Pipeline
+## Running the Pipeline (Simulation)
+
+```bash
+python main_simulation.py --num-clients 2
+```
+or using flwr cli
+
+```bash
+flwr run . local-simulation --stream
+```
+
+## Running the Pipeline (Deployment)
 
 ### Lauch Flower Federation
 

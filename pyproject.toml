@@ -10,7 +10,7 @@ dependencies = [
     "numpy>=1.21.0",
     "pandas>=2.2.2",
     "mkdocs>=1.6.1",
-    "flwr>=1.11.1",
+    "flwr[simlualtion]>=1.11.1",
     "pysnptools>=0.5.13",
     "pandas-plink>=2.3.1",
     "pyplink>=1.3.7",
@@ -43,6 +43,12 @@ publisher = "flower"
 [tool.flwr.app.components]
 serverapp = "pipeline.server_app:app"
 clientapp = "pipeline.client_app:app"
+
+[tool.flwr.federations]
+default = "local-simulation"
+
+[tool.flwr.federations.local-simulation]
+options.num-supernodes = 2
 
 [tool.flwr.federations.local-deployment]
 address = "127.0.0.1:9093"

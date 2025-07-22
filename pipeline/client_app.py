@@ -47,7 +47,7 @@ class FedLRClient(BaseGWASClient):
         self.intermediate_dir = loader.intermediate_dir
         self.log_dir = loader.log_dir
 
-       # super().__init__(plink_prefix, client_id="client_1", partition_by=partition_by)
+        # super().__init__(plink_prefix, client_id="client_1", partition_by=partition_by)
         # Overwrite thresholds from config loaded via DataLoader
         thresholds = loader.get_thresholds()
         self.maf_threshold = thresholds.get("maf_threshold", 0.01)
