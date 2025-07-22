@@ -167,7 +167,7 @@ flower-supernode \
 We have set configuration in `pyproject.toml` for the Flower Federation, you can run the following command to start the our FedGWAS Pipeline App on the Federation:
 
 ```bash
-flwr run .local-deployment --stream
+flwr run . local-deployment --stream
 ```
 
 ### Other Notes:

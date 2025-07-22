@@ -27,6 +27,7 @@ import uuid
 
 class FedLRClient(BaseGWASClient):
     def __init__(self, config_file="config.yaml", partition_by="samples"):
+        
         # Use DataLoader to load configuration and transform data if necessary
         loader = DataLoader(config_file)
         
@@ -38,6 +39,7 @@ class FedLRClient(BaseGWASClient):
         if os.path.exists(loader.log_dir):
             shutil.rmtree(loader.log_dir)
         os.makedirs(loader.log_dir, exist_ok=True)
+        
         # transform_data() returns the PLINK dataset prefix (e.g., "data/client_data")
         plink_prefix = loader.transform_data()
         client_id = f"client_{uuid.uuid4().hex[:6]}"
@@ -255,17 +257,15 @@ class FedLRClient(BaseGWASClient):
 #     config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
 #     client = FedLRClient(config_file=config_file, partition_by="samples")
 #     fl.client.start_numpy_client(server_address="127.0.0.1:8080", client=client)
+from flwr.client import ClientApp, start_client
+from flwr.common import Context
+import sys
 
-if __name__ == "__main__":
-    from flwr.client import ClientApp, start_client
-    from flwr.common import Context
-    import sys
-    
-    config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
-    def client_fn(context: Context):
-        return FedLRClient(config_file=config_file, partition_by="samples").to_client()
-    
-    app = ClientApp(client_fn)
-    start_client(app)
+config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
+def client_fn(context: Context):
+    return FedLRClient(config_file=config_file, partition_by="samples").to_client()
+
+app = ClientApp(client_fn)
+start_client(app)
     
     
