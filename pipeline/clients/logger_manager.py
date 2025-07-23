@@ -41,7 +41,9 @@ class LoggerManager:
         
         # Only add handler if logger doesn't have one
         if not logger.handlers:
-            log_path = os.path.join(log_dir, f"client_{client_id}_log.txt")
+            log_path = os.path.join(log_dir, f"{client_id}_log.txt")
+            if os.path.exists(log_path):
+                os.remove(log_path)
             file_handler = logging.FileHandler(log_path)
             file_handler.setFormatter(
                 logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
