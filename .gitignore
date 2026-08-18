@@ -1,0 +1,145 @@
+.venv
+dist/
+sdist/
+**/__pycache__/
+.pytest_cache/
+*.pyc
+.mypy_cache/
+docs/website/.docusaurus/
+
+# Local-only docs (not shipped)
+docs/paper/
+docs/old_docs/
+docs/prd/
+docs/README_old.md
+
+# Data
+user_data/
+
+# Logs
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+
+# Dependency directories
+docs/website/node_modules/
+docs/website/build/
+
+# Environment variables
+.env
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS specific
+.DS_Store
+**/.DS_Store
+
+# Legacy/archived directories
+archived/
+bin/
+centers/
+data/
+
+# Unused / local-only pipeline paths
+pipeline/exerpiements.md
+pipeline/experiments.md
+pipeline/visualization_archived/
+pipeline/server/strategy.py
+pipeline/server/strategy_new.py
+pipeline/server/aggregator_qc.py
+pipeline/utils/bloom_filter.py
+
+# Redundant/outdated documentation
+Readme_pipeline.md
+EXPERIMENT_RUNNER_README.md
+.pre-commit-config.yaml
+!cluster_deployment/docs/
+!cluster_deployment/docs/**
+
+# Docker (local workflow only; cluster deployment is under cluster_deployment/)
+docker/
+.dockerignore
+
+# Performance manuscript drafts (local only; configs stay in repo)
+experiments/performance/README.md
+experiments/performance/appendix_sections.md
+experiments/performance/appendix_table.md
+experiments/performance/appendix_table.tex
+experiments/performance/manuscript_sections.md
+
+# Local notes, reports, and archives (not shipped)
+experiments/real_world/1000genomes/EXPERIMENT_STATUS.md
+ISSUES_REPORT.md
+ISSUES_REPORT_UPDATED.md
+plan.md
+experiments.docx
+InfoSummit_kinship.pdf
+mkdocs.yml
+pipeline.pdf
+pipeline.zip
+plink.zip
+results/
+
+# Experiment run outputs and synthetic data artifacts
+experiments/**/results/
+experiments/**/results_*/
+experiments/*/*/results/
+experiments/**/data/**/*.bed
+experiments/**/data/**/*.bim
+experiments/**/data/**/*.fam
+experiments/**/data/**/*.log
+experiments/**/data/**/*.kin0
+experiments/**/data/**/*.assoc*
+experiments/**/data/**/*.genome
+experiments/**/data/**/*.hwe
+experiments/**/data/**/*.imiss
+experiments/**/data/**/*.lmiss
+experiments/**/data/**/*.frq
+experiments/**/intermediate/
+**/__pycache__/
+
+# Task / cluster bundles
+fedgwas-cluster.tar.gz
+cluster_deployment/wheels/
+
+# Log files
+*.log
+**/*.log
+
+# PLINK output files
+*.bed
+*.bim
+*.fam
+*.kin0
+*.assoc*
+*.genome
+*.hwe
+*.imiss
+*.lmiss
+*.frq
+
+# Large data files (duplicate patterns for safety)
+*.bed
+*.bim
+*.fam
+
+# claude
+.claude/
+.venv/
+claude.md
+.windsurfrules
+README-task-manager.md
+.env.example
+/scripts/
+.cursor/*
+.test_scenario_a.py
+my_study/

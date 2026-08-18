@@ -1,0 +1,3 @@
+output:
+  intermediate_dir: "experiments/performance/medium_even/results/server/intermediate"
+  log_dir: "experiments/performance/medium_even/results/server/logs"

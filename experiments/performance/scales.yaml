@@ -1,0 +1,27 @@
+# Synthetic-data scales for Matpool scalability runs (appendix).
+# Generate data with pipeline simulation tools, then deploy like tiny_even.
+
+scales:
+  tiny:
+    n_samples: 500
+    n_snps: 5000
+    n_clients: 2
+    experiment_dir: experiments/correctness/tiny_even
+    expected_runtime_min: 10
+    notes: "Correctness + cluster benchmark default"
+
+  small:
+    n_samples: 2000
+    n_snps: 20000
+    n_clients: 2
+    experiment_dir: experiments/performance/small_even
+    expected_runtime_min: 60
+    notes: "Create with generate_synthetic_data --scale small"
+
+  medium:
+    n_samples: 5000
+    n_snps: 50000
+    n_clients: 2
+    experiment_dir: experiments/performance/medium_even
+    expected_runtime_min: 155
+    notes: "Create with generate_synthetic_data --scale medium"

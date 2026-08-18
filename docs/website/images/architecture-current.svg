@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">FedGWAS pipeline and federated architecture</title>
+  <desc id="desc">A two-layer diagram. The top boxed layer shows the FedGWAS pipeline steps. The bottom boxed layer shows multiple clients connected to a federated server.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#28566b"/>
+    </marker>
+    <style>
+      .bg { fill: #f7fafc; }
+      .section { fill: #ffffff; stroke: #ccd9e1; stroke-width: 2.2; rx: 24; }
+      .sectionLabel { font: 700 24px Arial, sans-serif; fill: #12384d; }
+      .step { fill: #ffffff; stroke: #a8c7d6; stroke-width: 2; rx: 16; }
+      .stepBlue { fill: #eff8fc; stroke: #9fc6d8; }
+      .stepGreen { fill: #f3fbf5; stroke: #9bcdae; }
+      .stepGold { fill: #fff8eb; stroke: #dfc27d; }
+      .stepText { font: 700 18px Arial, sans-serif; fill: #173d52; }
+      .stepSub { font: 13px Arial, sans-serif; fill: #597182; }
+      .client { fill: #edf8fc; stroke: #9fc6d8; stroke-width: 2; rx: 18; }
+      .server { fill: #173d52; stroke: #102e40; stroke-width: 2.5; rx: 20; }
+      .output { fill: #eef8f1; stroke: #9bcdae; stroke-width: 2; rx: 18; }
+      .text { font: 700 19px Arial, sans-serif; fill: #173d52; }
+      .sub { font: 14px Arial, sans-serif; fill: #597182; }
+      .serverText { font: 700 22px Arial, sans-serif; fill: #ffffff; }
+      .serverSub { font: 15px Arial, sans-serif; fill: #d8eaf2; }
+      .note { font: 15px Arial, sans-serif; fill: #4e6878; }
+      .arrow { stroke: #28566b; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .arrowBoth { stroke: #28566b; stroke-width: 4; fill: none; marker-end: url(#arrow); marker-start: url(#arrow); }
+      .dashed { stroke: #6e90a0; stroke-width: 3; fill: none; stroke-dasharray: 9 8; marker-end: url(#arrow); }
+      .icon { fill: none; stroke: #28566b; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .iconGold { fill: none; stroke: #a66d16; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .iconGreen { fill: none; stroke: #2f7d57; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .iconLight { fill: none; stroke: #d8eaf2; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .chip { stroke-width: 1.5; rx: 14; }
+      .chipRed { fill: #fdeae7; stroke: #dfa29a; }
+      .chipGold { fill: #fff0cc; stroke: #d7b866; }
+      .chipBlue { fill: #e8f3f8; stroke: #b2cbd8; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="720"/>
+
+  <rect x="55" y="35" width="1090" height="245" class="section"/>
+  <text x="85" y="78" class="sectionLabel">Pipeline steps</text>
+
+  <rect x="90" y="120" width="130" height="100" class="step stepBlue"/>
+  <path class="icon" d="M128 139 h22 l12 12 v26 h-34 z M150 139 v13 h12"/>
+  <text x="155" y="186" text-anchor="middle" class="stepText">Inputs</text>
+  <text x="155" y="209" text-anchor="middle" class="stepSub">data + config</text>
+
+  <path d="M 220 170 L 260 170" class="arrow"/>
+  <rect x="265" y="120" width="130" height="100" class="step stepBlue"/>
+  <circle cx="330" cy="154" r="16" class="icon"/>
+  <path class="icon" d="M322 154 l6 6 l12 -14"/>
+  <text x="330" y="186" text-anchor="middle" class="stepText">Local QC</text>
+  <text x="330" y="209" text-anchor="middle" class="stepSub">center filters</text>
+
+  <path d="M 395 170 L 435 170" class="arrow"/>
+  <rect x="440" y="120" width="130" height="100" class="step stepGreen"/>
+  <circle cx="505" cy="154" r="16" class="iconGreen"/>
+  <path class="iconGreen" d="M497 154 l6 6 l12 -14"/>
+  <text x="505" y="186" text-anchor="middle" class="stepText">Global QC</text>
+  <text x="505" y="209" text-anchor="middle" class="stepSub">shared summary</text>
+
+  <path d="M 570 170 L 610 170" class="arrow"/>
+  <rect x="615" y="120" width="130" height="100" class="step stepGold"/>
+  <path class="iconGold" d="M665 154 v-8 c0 -8 6 -14 15 -14 s15 6 15 14 v8 M660 154 h40 v28 h-40 z"/>
+  <text x="680" y="186" text-anchor="middle" class="stepText">Secure Sync</text>
+  <text x="680" y="209" text-anchor="middle" class="stepSub">encrypted relay</text>
+
+  <path d="M 745 170 L 785 170" class="arrow"/>
+  <rect x="790" y="120" width="130" height="100" class="step stepGold"/>
+  <circle cx="842" cy="149" r="8" class="iconGold"/>
+  <circle cx="868" cy="149" r="8" class="iconGold"/>
+  <circle cx="855" cy="172" r="8" class="iconGold"/>
+  <path class="iconGold" d="M850 152 l10 15 M860 152 l-10 15"/>
+  <text x="855" y="186" text-anchor="middle" class="stepText">KING</text>
+  <text x="855" y="209" text-anchor="middle" class="stepSub">kinship</text>
+
+  <path d="M 920 170 L 960 170" class="arrow"/>
+  <rect x="965" y="120" width="130" height="100" class="step stepGreen"/>
+  <path class="iconGreen" d="M1012 176 v-28 M1030 176 v-42 M1048 176 v-22 M1002 176 h56"/>
+  <text x="1030" y="186" text-anchor="middle" class="stepText">LR GWAS</text>
+  <text x="1030" y="209" text-anchor="middle" class="stepSub">p-values</text>
+
+  <path d="M 600 280 L 600 322" class="dashed"/>
+
+  <rect x="55" y="320" width="1090" height="360" class="section"/>
+  <text x="85" y="363" class="sectionLabel">Execution layer</text>
+
+  <rect x="95" y="395" width="245" height="72" class="client"/>
+  <path class="icon" d="M120 416 h24 l10 10 v28 h-34 z M144 416 v11 h10"/>
+  <text x="226" y="428" text-anchor="middle" class="text">Client center 1</text>
+  <text x="226" y="452" text-anchor="middle" class="sub">local data + PLINK</text>
+
+  <rect x="95" y="500" width="245" height="72" class="client"/>
+  <path class="icon" d="M120 521 h24 l10 10 v28 h-34 z M144 521 v11 h10"/>
+  <text x="226" y="533" text-anchor="middle" class="text">Client center 2</text>
+  <text x="226" y="557" text-anchor="middle" class="sub">local data + PLINK</text>
+
+  <rect x="95" y="605" width="245" height="72" class="client"/>
+  <path class="icon" d="M120 626 h24 l10 10 v28 h-34 z M144 626 v11 h10"/>
+  <text x="226" y="638" text-anchor="middle" class="text">Client center N</text>
+  <text x="226" y="662" text-anchor="middle" class="sub">same pipeline stages</text>
+
+  <rect x="475" y="450" width="250" height="150" class="server"/>
+  <path class="iconLight" d="M575 466 h50 v18 h-50 z M575 494 h50 v18 h-50 z M587 475 h1 M587 503 h1"/>
+  <text x="600" y="540" text-anchor="middle" class="serverText">Federated Server</text>
+  <text x="600" y="566" text-anchor="middle" class="serverSub">Flower ServerApp</text>
+  <text x="600" y="590" text-anchor="middle" class="serverSub">stage strategy</text>
+
+  <rect x="860" y="425" width="245" height="92" class="output"/>
+  <path class="iconGreen" d="M888 448 h22 l12 12 v28 h-34 z M910 448 v13 h12"/>
+  <text x="998" y="462" text-anchor="middle" class="text">Server outputs</text>
+  <text x="998" y="487" text-anchor="middle" class="sub">QC, KING, LR results</text>
+
+  <rect x="860" y="570" width="245" height="72" class="output"/>
+  <path class="iconGreen" d="M888 591 h36 M888 606 h36 M888 621 h24"/>
+  <text x="998" y="603" text-anchor="middle" class="text">Experiment logs</text>
+  <text x="998" y="626" text-anchor="middle" class="sub">metrics + retention</text>
+
+  <path d="M 340 431 C 400 431, 423 465, 475 492" class="arrowBoth"/>
+  <path d="M 340 536 C 400 536, 423 536, 475 536" class="arrowBoth"/>
+  <path d="M 340 641 C 400 641, 423 604, 475 568" class="arrowBoth"/>
+
+  <path d="M 725 503 C 780 490, 808 477, 860 471" class="arrow"/>
+  <path d="M 725 566 C 782 582, 812 599, 860 606" class="arrow"/>
+
+  <rect x="395" y="625" width="135" height="30" class="chip chipRed"/>
+  <text x="462" y="646" text-anchor="middle" class="note">raw data local</text>
+
+  <rect x="550" y="625" width="150" height="30" class="chip chipGold"/>
+  <text x="625" y="646" text-anchor="middle" class="note">encrypted relay</text>
+
+  <rect x="720" y="625" width="165" height="30" class="chip chipBlue"/>
+  <text x="803" y="646" text-anchor="middle" class="note">anonymized chunks</text>
+</svg>

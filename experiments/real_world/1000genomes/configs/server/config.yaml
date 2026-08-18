@@ -1,0 +1,3 @@
+output:
+  intermediate_dir: "experiments/real_world/1000genomes/results/server/intermediate"
+  log_dir: "experiments/real_world/1000genomes/results/server/logs"

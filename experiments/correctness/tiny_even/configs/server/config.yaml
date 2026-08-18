@@ -1,0 +1,3 @@
+output:
+  intermediate_dir: "experiments/correctness/tiny_even/results_2/server/intermediate"
+  log_dir: "experiments/correctness/tiny_even/results_2/server/logs"

@@ -1,0 +1,45 @@
+{
+  "name": "fed-gwas-docs",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Docusaurus documentation site for the FedGWAS project.",
+  "scripts": {
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.8.1",
+    "@docusaurus/plugin-content-docs": "3.8.1",
+    "@docusaurus/preset-classic": "3.8.1",
+    "@docusaurus/theme-mermaid": "3.8.1",
+    "@easyops-cn/docusaurus-search-local": "^0.55.1",
+    "@mdx-js/react": "^3.1.1",
+    "clsx": "^2.1.1",
+    "docusaurus": "^1.14.7",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "overrides": {
+    "webpack": "5.97.1",
+    "cheerio": "1.0.0-rc.12",
+    "@docusaurus/core": "3.8.1",
+    "@docusaurus/plugin-content-docs": "3.8.1",
+    "@docusaurus/theme-common": "3.8.1",
+    "@docusaurus/theme-translations": "3.8.1",
+    "@docusaurus/utils": "3.8.1",
+    "@docusaurus/utils-common": "3.8.1",
+    "@docusaurus/utils-validation": "3.8.1",
+    "@easyops-cn/docusaurus-search-local": {
+      "@docusaurus/plugin-content-docs": "3.8.1",
+      "@docusaurus/theme-common": "3.8.1",
+      "@docusaurus/theme-translations": "3.8.1",
+      "@docusaurus/utils": "3.8.1",
+      "@docusaurus/utils-common": "3.8.1",
+      "@docusaurus/utils-validation": "3.8.1",
+      "cheerio": "1.0.0-rc.12"
+    }
+  }
+}

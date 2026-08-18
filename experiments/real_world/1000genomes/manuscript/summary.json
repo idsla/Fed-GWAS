@@ -1,0 +1,31 @@
+{
+  "experiment": "1000genomes",
+  "results_dir": "experiments/real_world/1000genomes/results",
+  "baseline_dir": "experiments/real_world/1000genomes/data/centralized_baseline",
+  "output_dir": "experiments/real_world/1000genomes/manuscript",
+  "reports_loaded": [
+    "qc",
+    "lr",
+    "king",
+    "summary"
+  ],
+  "figures_generated": [
+    "figures/manhattan_comparison.png",
+    "figures/king_correlation.png",
+    "figures/manhattan_federated.png",
+    "figures/qq_federated.png",
+    "figures/lr_correlation.png",
+    "figures/manhattan_baseline.png",
+    "figures/qq_baseline.png"
+  ],
+  "tables_generated": [
+    "tables/filtering_table.tex",
+    "tables/qc_table.md",
+    "tables/lr_table.md",
+    "tables/filtering_table.md",
+    "tables/coverage_table.md",
+    "tables/qc_table.tex",
+    "tables/coverage_table.tex",
+    "tables/king_table.md"
+  ]
+}

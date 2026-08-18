@@ -1,0 +1,23 @@
+experiment_name: 1000genomes
+experiment_category: real_world
+description: '1000 Genomes Project (chromosome 22) with simulated phenotypes (additive model)'
+
+clients:
+  config_files:
+    0: experiments/real_world/1000genomes/configs/center_1/config.yaml
+    1: experiments/real_world/1000genomes/configs/center_2/config.yaml
+
+data:
+  data_dir: experiments/real_world/1000genomes/data
+  partition_strategy: population
+
+server:
+  num_server_rounds: 350
+  chunk_size: 100
+  min_available_clients: 1
+  min_fit_clients: 1
+
+analysis:
+  generate_baseline: true
+  compare_results: true
+  metrics_collection: true

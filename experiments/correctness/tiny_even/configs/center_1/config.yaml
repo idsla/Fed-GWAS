@@ -1,0 +1,43 @@
+input_data:
+  path: "experiments/correctness/tiny_even/data/tiny/center_1/tiny_center_1"
+  type: "bed"
+
+output:
+  intermediate_dir: "experiments/correctness/tiny_even/results_2/center_1/intermediate"
+  log_dir: "experiments/correctness/tiny_even/results_2/center_1/logs"
+
+parameters:
+  sample_offset: 1000000000000
+  chunk_size: 200
+  sample_chunk_size: 100
+  snp_chunk_size: 200
+  lr_target_chunks: 2
+  run_id: "20260221_2000"
+
+thresholds:
+  maf_threshold: 0.01
+  missing_threshold: 0.05
+  hwe_threshold: 1e-6
+  p_threshold: 0.3  # Backward compatibility
+  local_lr_threshold: 0.3  # Filter SNPs with p >= 0.3 in local LR
+  global_lr_threshold: 0.1  # Mark SNPs with p < 0.1 as significant in global LR
+  king_threshold: 0.23
+
+flower:
+  # For local simulation use 127.0.0.1:9092
+  # For cluster deployment use the matpool server node IP.
+  server_address: "127.0.0.1:9092"
+  num_rounds: 80
+
+participation:
+  key_exchange: true
+  sync: true
+  local_qc: true
+  global_qc: true
+  global_qc_response: true
+  init_chunks: true
+  iterative_king: true
+  local_lr: true
+  local_lr_filter_response: true
+  init_chunks_lr: true
+  iterative_lr: true

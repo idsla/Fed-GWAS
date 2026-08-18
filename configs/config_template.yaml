@@ -1,0 +1,36 @@
+input_data:
+  path: "simulated_data/tiny/center_1/"
+  type: "bed"
+
+output:
+  intermediate_dir: "simulated_data/tiny/center_1/intermediate" # all the intermediate data files such as chunks
+  log_dir: "simulated_data/tiny/center_1/logs" # all the intermediate results files such as logs, plink output files
+
+parameters:
+  sample_offset: 1000000000000
+  chunk_size: 100
+  sample_chunk_size: 100
+  snp_chunk_size: 100
+
+thresholds:
+  maf_threshold: 0.01
+  missing_threshold: 0.01
+  hwe_threshold: 1e-6
+  p_threshold: 1e-3
+
+flower:
+  server_address: "127.0.0.1:9093"
+  num_rounds: 10 
+
+participation:
+  key_exchange: true
+  sync: true
+  local_qc: true
+  global_qc: true
+  global_qc_response: true
+  init_chunks: true
+  iterative_king: true
+  local_lr: true
+  local_lr_filter_response: true
+  init_chunks_lr: true
+  iterative_lr: true 

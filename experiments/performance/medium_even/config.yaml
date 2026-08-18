@@ -1,0 +1,60 @@
+# Performance Experiment: Medium Scale, Even Partition (Matpool appendix)
+# Purpose: Scalability benchmark on 3-node cluster (2 clients)
+# Expected Runtime: ~240 minutes (see scales.yaml)
+
+clients:
+  config_files:
+    0: experiments/performance/medium_even/configs/center_1/config.yaml
+    1: experiments/performance/medium_even/configs/center_2/config.yaml
+  participation:
+    global_qc: true
+    global_qc_response: true
+    init_chunks: true
+    init_chunks_lr: true
+    iterative_king: true
+    iterative_lr: true
+    key_exchange: true
+    local_lr: true
+    local_lr_filter_response: true
+    local_qc: true
+    sync: true
+  thresholds:
+    hwe_threshold: 1.0e-06
+    maf_threshold: 0.01
+    missing_threshold: 0.05
+    p_threshold: 0.3
+    king_threshold: 0.23
+
+data:
+  data_dir: experiments/performance/medium_even/data/medium
+  partition_strategy: even
+  scale: medium
+
+description: 'Performance benchmark: Medium scale with even partition (2 clients, 5000×50k)'
+experiment_name: medium_even
+experiment_category: performance
+
+monitoring:
+  enable_network_monitoring: true
+  enable_performance_monitoring: true
+  network_monitoring_interval: 5.0
+  resource_monitoring_interval: 2.0
+  network_max_samples: 500
+
+retention:
+  tier: standard
+  auto_apply_on_complete: true
+
+num_clients: 2
+scenario: performance_medium
+
+server:
+  chunk_size: 500
+  min_available_clients: 1
+  min_fit_clients: 1
+  num_server_rounds: 130  # ~116 needed: 100 iterative_king + fixed + LR
+
+analysis:
+  generate_baseline: false
+  compare_results: false
+  metrics_collection: true
